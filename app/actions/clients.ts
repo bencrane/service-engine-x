@@ -1,6 +1,5 @@
 "use server";
 
-import { getSession } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
 interface CreateClientInput {
@@ -27,12 +26,6 @@ interface ActionResult {
 }
 
 export async function createClientAction(input: CreateClientInput): Promise<ActionResult> {
-  // Verify user is logged in
-  const session = await getSession();
-  if (!session) {
-    return { success: false, error: "Not authenticated" };
-  }
-
   // Validate required fields
   if (!input.name_f?.trim()) {
     return { success: false, error: "First name is required" };
