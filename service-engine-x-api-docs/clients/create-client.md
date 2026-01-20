@@ -1,16 +1,18 @@
 # Create Client
 
-## Endpoint
-
 ```
 POST /api/clients
 ```
 
-## Description
+---
+
+## 1. Purpose
 
 Creates a new client user account.
 
-## Authentication
+---
+
+## 2. Authorization
 
 Requires Bearer token in the `Authorization` header.
 
@@ -18,18 +20,20 @@ Requires Bearer token in the `Authorization` header.
 Authorization: Bearer {token}
 ```
 
+**Permission required:** Authenticated operator.
+
 ---
 
-## Request
+## 3. Request Parameters
 
 ### Request Headers
 
-| Header | Type | Required | Description |
-|--------|------|----------|-------------|
-| `Authorization` | string | Yes | Bearer token |
-| `Content-Type` | string | Yes | `application/json` |
-| `Accept` | string | Yes | `application/json` |
-| `X-Api-Version` | string | No | API version identifier |
+| Header | Type | Required |
+|--------|------|----------|
+| `Authorization` | string | Yes |
+| `Content-Type` | string | Yes (`application/json`) |
+| `Accept` | string | Yes (`application/json`) |
+| `X-Api-Version` | string | No |
 
 ### Request Body
 
@@ -50,61 +54,79 @@ Authorization: Bearer {token}
     "postcode": "10001"
   },
   "note": "VIP client",
-  "balance": "100.00",
   "optin": "Yes",
   "stripe_id": "cus_xxx",
-  "custom_fields": {},
+  "custom_fields": { "industry": "Technology" },
   "status_id": 1,
   "created_at": "2024-01-15T10:30:00+00:00"
 }
 ```
 
-### Body Parameters
+### Field Definitions (Request)
+
+| Field | Writable | Type | Required | Default | Description |
+|-------|----------|------|----------|---------|-------------|
+| `name_f` | Yes | string | **Yes** | — | First name. |
+| `name_l` | Yes | string | **Yes** | — | Last name. |
+| `email` | Yes | string | **Yes** | — | Email address. Must be unique. |
+| `company` | Yes | string | No | `null` | Company name. |
+| `phone` | Yes | string | No | `null` | Phone number. |
+| `tax_id` | Yes | string | No | `null` | Tax identifier. |
+| `address` | Yes | object | No | `null` | Billing address. See Address Handling. |
+| `note` | Yes | string | No | `null` | Internal note. |
+| `optin` | Yes | string | No | `null` | Marketing opt-in. |
+| `stripe_id` | Yes | string | No | `null` | Stripe customer ID. |
+| `custom_fields` | Yes | object | No | `{}` | Custom field key-values. |
+| `status_id` | Yes | integer | No | `1` | Account status. |
+| `created_at` | Yes | datetime | No | `now()` | Override creation timestamp. |
+
+### Address Object (Request)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name_f` | string | Yes | First name |
-| `name_l` | string | Yes | Last name |
-| `email` | string | Yes | Email address (must be unique) |
-| `company` | string | No | Company name |
-| `phone` | string | No | Phone number |
-| `tax_id` | string | No | Tax identifier |
-| `address` | object | No | Billing address |
-| `note` | string | No | Internal note |
-| `balance` | number | No | Initial account balance. Default: `0.00` |
-| `optin` | string | No | Marketing opt-in status |
-| `stripe_id` | string | No | Stripe customer ID |
-| `custom_fields` | object | No | Custom field values |
-| `status_id` | integer | No | Account status. Default: `1` |
-| `created_at` | string (datetime) | No | Override creation timestamp |
+| `line_1` | string | No | Street address line 1. |
+| `line_2` | string | No | Street address line 2. |
+| `city` | string | No | City. |
+| `state` | string | No | State/Province. |
+| `country` | string | No | ISO 3166-1 alpha-2 code (e.g., `US`, `GB`). |
+| `postcode` | string | No | Postal/ZIP code. |
 
-### Address Object
+### Write-Time Ignored Fields
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `line_1` | string | No | Street address line 1 |
-| `line_2` | string | No | Street address line 2 |
-| `city` | string | No | City |
-| `state` | string | No | State/Province |
-| `country` | string | No | ISO 3166-1 alpha-2 country code |
-| `postcode` | string | No | Postal/ZIP code |
+These fields are **silently ignored** if provided in the request body:
 
----
+| Field | Reason |
+|-------|--------|
+| `id` | Auto-generated UUID. |
+| `name` | Computed from `name_f` + `name_l`. |
+| `balance` | Managed via invoices. Starts at `0.00`. |
+| `spent` | Computed from paid invoices. |
+| `aff_id` | Auto-generated. |
+| `aff_link` | Auto-generated. |
+| `role_id` | Forced to client role. |
+| `role` | Joined object, not writable. |
+| `ga_cid` | Set via tracking, not API. |
 
-## Validation Rules
+### Write-Time Restricted Fields
 
-| Field | Rules |
-|-------|-------|
-| `email` | Required, valid email format, unique |
-| `name_f` | Required, string |
-| `name_l` | Required, string |
-| `balance` | Numeric, >= 0 |
-| `status_id` | Integer |
-| `address.country` | ISO 3166-1 alpha-2 code |
+| Field | Behavior |
+|-------|----------|
+| `email` | Must be unique. Returns 400 if duplicate. |
+| `status_id` | Must be valid status integer. |
 
 ---
 
-## Response
+## 4. Side Effects
+
+| Effect | Description |
+|--------|-------------|
+| **Address record created** | If `address` object provided, a new row is inserted into `addresses` table and linked to user via `address_id`. |
+| **Affiliate ID generated** | `aff_id` and `aff_link` auto-generated for new client. |
+| **Role assigned** | Client role automatically assigned via `role_id`. |
+
+---
+
+## 5. Response Shape
 
 ### 201 Created
 
@@ -134,89 +156,102 @@ Returns the created client object.
     "company_vat": null
   },
   "note": "VIP client",
-  "balance": "100.00",
+  "balance": "0.00",
   "spent": null,
   "optin": "Yes",
   "stripe_id": "cus_xxx",
-  "custom_fields": {},
+  "custom_fields": { "industry": "Technology" },
   "status": 1,
   "aff_id": 12345,
   "aff_link": "https://example.com/r/ABC123",
   "role_id": "uuid",
-  "role": {
-    "id": "uuid",
-    "name": "Client",
-    "dashboard_access": 0,
-    "order_access": 1,
-    "order_management": 0,
-    "ticket_access": 1,
-    "ticket_management": 0,
-    "invoice_access": 1,
-    "invoice_management": 0,
-    "clients": 0,
-    "services": 0,
-    "coupons": 0,
-    "forms": 0,
-    "messaging": 1,
-    "affiliates": 0,
-    "settings_company": false,
-    "settings_payments": false,
-    "settings_team": false,
-    "settings_modules": false,
-    "settings_integrations": false,
-    "settings_orders": false,
-    "settings_tickets": false,
-    "settings_accounts": false,
-    "settings_messages": false,
-    "settings_tags": false,
-    "settings_sidebar": false,
-    "settings_dashboard": false,
-    "settings_templates": false,
-    "settings_emails": false,
-    "settings_language": false,
-    "settings_logs": false,
-    "created_at": "2024-01-01T00:00:00+00:00",
-    "updated_at": "2024-01-01T00:00:00+00:00"
-  },
+  "role": { ... },
   "ga_cid": null,
   "created_at": "2024-01-15T10:30:00+00:00"
 }
 ```
 
-### Response Fields
+### Response Structure
+
+| Field | Type | Present | Description |
+|-------|------|---------|-------------|
+| `id` | UUID | Always | Generated identifier. |
+| `name` | string | Always | Computed: `name_f + " " + name_l`. |
+| `name_f` | string | Always | First name. |
+| `name_l` | string | Always | Last name. |
+| `email` | string | Always | Email address. |
+| `company` | string \| null | Always | Company name. |
+| `phone` | string \| null | Always | Phone number. |
+| `tax_id` | string \| null | Always | Tax identifier. |
+| `address` | object \| null | Always | `null` if not provided; otherwise AddressObject. |
+| `note` | string \| null | Always | Internal note. |
+| `balance` | string | Always | Starts at `"0.00"`. |
+| `spent` | string \| null | Always | `null` for new clients. |
+| `optin` | string \| null | Always | Marketing opt-in. |
+| `stripe_id` | string \| null | Always | Stripe customer ID. |
+| `custom_fields` | object | Always | Custom fields. Default `{}`. |
+| `status` | integer | Always | Account status. |
+| `aff_id` | integer | Always | Auto-generated affiliate ID. |
+| `aff_link` | string | Always | Auto-generated affiliate link. |
+| `role_id` | UUID | Always | Client role ID. |
+| `role` | object | Always | Joined RoleObject. |
+| `ga_cid` | string \| null | Always | `null` for new clients. |
+| `created_at` | datetime | Always | Creation timestamp. |
+
+### AddressObject (Response)
+
+When address is provided, response includes expanded address with additional fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | string (UUID) | Unique client identifier |
-| `name` | string | Full name (computed) |
-| `name_f` | string | First name |
-| `name_l` | string | Last name |
-| `email` | string | Email address |
-| `company` | string | Company name |
-| `phone` | string | Phone number |
-| `tax_id` | string | Tax identifier |
-| `address` | object | Billing address |
-| `note` | string | Internal note |
-| `balance` | string | Account balance |
-| `spent` | string \| null | Total amount spent |
-| `optin` | string | Marketing opt-in status |
-| `stripe_id` | string | Stripe customer ID |
-| `custom_fields` | object | Custom field values |
-| `status` | integer | Account status |
-| `aff_id` | integer | Auto-generated affiliate ID |
-| `aff_link` | string | Auto-generated affiliate link |
-| `role_id` | string (UUID) | Role identifier |
-| `role` | object | Embedded role object |
-| `ga_cid` | string \| null | Google Analytics client ID |
-| `created_at` | string (datetime) | Creation timestamp |
+| `line_1` | string \| null | Street address line 1. |
+| `line_2` | string \| null | Street address line 2. |
+| `city` | string \| null | City. |
+| `state` | string \| null | State/Province. |
+| `country` | string \| null | Country code. |
+| `postcode` | string \| null | Postal code. |
+| `name_f` | string \| null | Recipient first name (inherited from user if not set). |
+| `name_l` | string \| null | Recipient last name (inherited from user if not set). |
+| `tax_id` | string \| null | Address-specific tax ID. |
+| `company_name` | string \| null | Address-specific company name. |
+| `company_vat` | string \| null | VAT number. |
 
 ---
 
-## Error Responses
+## 6. Field Semantics
 
-### 400 Bad Request
+| Field | Semantics | Notes |
+|-------|-----------|-------|
+| `id` | Read-only | Auto-generated UUID. |
+| `name` | Computed | Derived at response time. Never stored. |
+| `name_f` | Read + Write | Required on create. |
+| `name_l` | Read + Write | Required on create. |
+| `email` | Read + Write | Required. Must be unique. |
+| `company` | Read + Write | Optional. |
+| `phone` | Read + Write | Optional. |
+| `tax_id` | Read + Write | Optional. |
+| `address` | Read + Write | Creates linked address record. See Address Handling. |
+| `note` | Read + Write | Optional. |
+| `balance` | Read-only | Managed via invoices. Cannot be set on create. |
+| `spent` | Computed | Sum of paid invoices. Always `null` on create. |
+| `optin` | Read + Write | Optional. |
+| `stripe_id` | Read + Write | Optional. |
+| `custom_fields` | Read + Write | Optional. Defaults to `{}`. |
+| `status` / `status_id` | Read + Write | Request uses `status_id`, response uses `status`. |
+| `aff_id` | Read-only | Auto-generated. |
+| `aff_link` | Read-only | Auto-generated. |
+| `role_id` | Read-only | Forced to client role. |
+| `role` | Read-only (joined) | Client role object. |
+| `ga_cid` | Read-only | Set via tracking. |
+| `created_at` | Read + Write | Can be overridden on create. |
 
-Invalid request body or validation failure.
+---
+
+## 7. Error Behavior
+
+### 400 Bad Request — Validation Error
+
+Invalid or missing required fields.
 
 ```json
 {
@@ -228,9 +263,27 @@ Invalid request body or validation failure.
 }
 ```
 
+**Causes:**
+- Missing `email`, `name_f`, or `name_l`
+- Invalid email format
+- Invalid `status_id` value
+
+### 400 Bad Request — Uniqueness Violation
+
+```json
+{
+  "message": "The given data was invalid.",
+  "errors": {
+    "email": ["The email has already been taken."]
+  }
+}
+```
+
+**Cause:** Email already exists for another client.
+
 ### 401 Unauthorized
 
-Missing or invalid authentication token.
+Missing or invalid Bearer token.
 
 ```json
 {
@@ -240,11 +293,32 @@ Missing or invalid authentication token.
 
 ---
 
-## Notes
+## 8. Notes / Edge Cases
 
-- Email addresses must be unique across all clients
-- A client role is automatically assigned to new clients
-- The `aff_id` and `aff_link` are auto-generated
-- The `spent` field is computed and starts as `null`
-- If `address` is provided, a separate address record is created and linked
-- The `name` response field is computed from `name_f` and `name_l`
+### Address Handling
+
+| Scenario | Behavior |
+|----------|----------|
+| `address` omitted | No address record created. Response `address` is `null`. |
+| `address: null` | Explicit null. No address record created. Response `address` is `null`. |
+| `address: {}` | Empty object. Address record created with all fields `null`. |
+| `address: { line_1: "..." }` | Address record created with provided fields. Missing fields are `null`. |
+
+**Important:** The address is stored as a separate record in the `addresses` table, linked via `users.address_id`. This is a **live reference**, not a snapshot. Changes to the address record affect the client's address.
+
+**Invoice addresses are different:** Invoices store `billing_address` as a **JSONB snapshot** at invoice creation time. Updating a client's address does not affect existing invoices.
+
+### Computed Fields
+
+- `name`: Concatenation of `name_f` and `name_l` with space. Computed at response time.
+- `spent`: Sum of `total` from all paid invoices for this client. Computed at response time. `null` if no paid invoices.
+
+### Auto-Generated Fields
+
+- `id`: UUID generated via `gen_random_uuid()`.
+- `aff_id`: Integer auto-generated.
+- `aff_link`: URL constructed from `aff_id`.
+
+### Role Assignment
+
+All clients are assigned the client role (identified by `dashboard_access = 0`). The `role_id` field in the request is ignored. Attempting to create a client with a team role will fail or be overridden.
