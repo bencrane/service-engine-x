@@ -117,3 +117,40 @@ export interface RouteMetadata {
 export function getOpenAPISpec(): OpenAPISpec {
   return openapi;
 }
+
+/**
+ * Endpoint summary for API index
+ */
+export interface EndpointSummary {
+  method: string;
+  path: string;
+  description: string;
+}
+
+/**
+ * Get a list of all registered endpoints (for /api index)
+ * Derived from the OpenAPI registry - not hardcoded
+ */
+export function getEndpointList(): EndpointSummary[] {
+  const endpoints: EndpointSummary[] = [];
+
+  for (const [path, methods] of Object.entries(openapi.paths)) {
+    for (const [method, operation] of Object.entries(methods)) {
+      const op = operation as { summary?: string; description?: string };
+      endpoints.push({
+        method: method.toUpperCase(),
+        path,
+        description: op.summary || op.description || "",
+      });
+    }
+  }
+
+  // Sort by path, then by method
+  endpoints.sort((a, b) => {
+    const pathCompare = a.path.localeCompare(b.path);
+    if (pathCompare !== 0) return pathCompare;
+    return a.method.localeCompare(b.method);
+  });
+
+  return endpoints;
+}
