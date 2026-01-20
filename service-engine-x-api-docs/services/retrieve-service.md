@@ -178,7 +178,7 @@ Missing or invalid Bearer token.
 
 ### 404 Not Found
 
-Service does not exist.
+Service does not exist or is soft-deleted.
 
 ```json
 {
@@ -189,15 +189,19 @@ Service does not exist.
 **Causes:**
 - Invalid UUID format
 - UUID does not match any service
-- Service has been soft-deleted
+- Service has been soft-deleted (`deleted_at IS NOT NULL`)
+
+**Note:** 400 and 409 are not applicable to retrieve endpoints.
 
 ---
 
 ## 8. Notes / Edge Cases
 
-### Soft-Deleted Services
+### Soft-Delete Visibility
 
-Services with `deleted_at` set are treated as deleted. Retrieve returns 404 for soft-deleted services.
+- Soft-deleted services (`deleted_at IS NOT NULL`) return **404 Not Found**
+- There is **no `include_deleted` parameter** — soft-deleted services cannot be retrieved via this endpoint
+- To access deleted services, direct database query is required
 
 ### Pricing Display
 

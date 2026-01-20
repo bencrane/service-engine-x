@@ -162,37 +162,42 @@ Authorization: Bearer {token}
 | Field | Semantics | Notes |
 |-------|-----------|-------|
 | `id` | Read-only | Generated UUID |
-| `name` | Write (required) | |
-| `description` | Write | |
-| `image` | Read-only on create | Not settable via API; managed separately |
-| `recurring` | Write (required) | |
-| `price` | Write | |
-| `pretty_price` | Computed | Formatted from `price` + `currency` |
-| `currency` | Write (required) | |
-| `f_price` | Write | |
-| `f_period_l` | Write | |
-| `f_period_t` | Write | |
-| `r_price` | Write | |
-| `r_period_l` | Write | |
-| `r_period_t` | Write | |
-| `recurring_action` | Write | |
-| `multi_order` | Write | |
-| `request_orders` | Write | |
-| `max_active_requests` | Write | |
-| `deadline` | Write | |
-| `public` | Write | |
-| `sort_order` | Read-only on create | Defaults to 0; update via PUT |
-| `group_quantities` | Write | |
-| `employees` | Write-only | Not returned in response; use separate query |
-| `folder_id` | Write | |
-| `metadata` | Write | Array on write, object on read |
-| `braintree_plan_id` | Write | |
-| `hoth_product_key` | Write | |
-| `hoth_package_name` | Write | |
-| `provider_id` | Write | |
-| `provider_service_id` | Write | |
+| `name` | Read + Write | Required on create |
+| `description` | Read + Write | |
+| `image` | Read-only | Managed via separate upload |
+| `recurring` | Read + Write | Required on create |
+| `price` | Read + Write | |
+| `pretty_price` | Computed | Derived from `price` + `currency` |
+| `currency` | Read + Write | Required on create |
+| `f_price` | Read + Write | |
+| `f_period_l` | Read + Write | |
+| `f_period_t` | Read + Write | |
+| `r_price` | Read + Write | |
+| `r_period_l` | Read + Write | |
+| `r_period_t` | Read + Write | |
+| `recurring_action` | Read + Write | |
+| `multi_order` | Read + Write | |
+| `request_orders` | Read + Write | |
+| `max_active_requests` | Read + Write | |
+| `deadline` | Read + Write | |
+| `public` | Read + Write | |
+| `sort_order` | Read-only | Defaults to 0 on create |
+| `group_quantities` | Read + Write | |
+| `employees` | Write-only | **Full replacement**, not returned |
+| `folder_id` | Read + Write | |
+| `metadata` | Read + Write | **Full replacement**; array in, object out |
+| `braintree_plan_id` | Read + Write | |
+| `hoth_product_key` | Read + Write | |
+| `hoth_package_name` | Read + Write | |
+| `provider_id` | Read + Write | |
+| `provider_service_id` | Read + Write | |
 | `created_at` | Read-only | Auto-generated |
 | `updated_at` | Read-only | Auto-generated |
+
+### Replacement Semantics (No Merge)
+
+- `employees`: Full replacement. Existing assignments deleted, new ones inserted.
+- `metadata`: Full replacement. Entire object replaced, not merged.
 
 ### Write-Time Ignored Fields
 

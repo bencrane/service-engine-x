@@ -200,6 +200,20 @@ None. Read-only operation.
 
 ## 7. Error Behavior
 
+### 400 Bad Request
+
+Invalid query parameters.
+
+```json
+{
+  "message": "Invalid request parameters.",
+  "errors": {
+    "limit": ["The limit must be between 1 and 100."],
+    "sort": ["Invalid sort field."]
+  }
+}
+```
+
 ### 401 Unauthorized
 
 Missing or invalid Bearer token.
@@ -210,13 +224,17 @@ Missing or invalid Bearer token.
 }
 ```
 
+**Note:** 404 and 409 are not applicable to list endpoints.
+
 ---
 
 ## 8. Notes / Edge Cases
 
-### Soft-Deleted Services
+### Soft-Delete Visibility
 
-Services with `deleted_at` set are excluded from list results. Soft-deleted services do not appear in API responses.
+- Soft-deleted services (`deleted_at IS NOT NULL`) are **excluded by default**
+- There is **no `include_deleted` parameter** — soft-deleted services cannot be retrieved via this endpoint
+- To access deleted services, direct database query is required
 
 ### Deferred Fields
 

@@ -185,7 +185,7 @@ Returns the full updated service object.
 | `image` | Read-only | Managed via separate upload |
 | `recurring` | Read + Write | |
 | `price` | Read + Write | |
-| `pretty_price` | Computed | |
+| `pretty_price` | Computed | Derived from `price` + `currency` |
 | `currency` | Read + Write | |
 | `f_price` | Read + Write | |
 | `f_period_l` | Read + Write | |
@@ -201,16 +201,21 @@ Returns the full updated service object.
 | `public` | Read + Write | |
 | `sort_order` | Read + Write | |
 | `group_quantities` | Read + Write | |
-| `employees` | Write-only | Replaces all assignments |
+| `employees` | Write-only | **Full replacement**, not returned |
 | `folder_id` | Read + Write | Set to `null` to unassign |
-| `metadata` | Read + Write (replace) | Replaces entire object |
+| `metadata` | Read + Write | **Full replacement**; array in, object out |
 | `braintree_plan_id` | Read + Write | |
 | `hoth_product_key` | Read + Write | |
 | `hoth_package_name` | Read + Write | |
 | `provider_id` | Read + Write | |
 | `provider_service_id` | Read + Write | |
-| `created_at` | Read-only | Cannot be changed |
+| `created_at` | Read-only | Immutable |
 | `updated_at` | Read-only | Auto-updated |
+
+### Replacement Semantics (No Merge)
+
+- `employees`: Full replacement. All existing assignments deleted, new ones inserted. Pass `[]` to clear.
+- `metadata`: Full replacement. Entire object replaced, not merged. Pass `[]` to clear.
 
 ### Write-Time Ignored Fields
 

@@ -6,9 +6,23 @@ DELETE /api/services/{id}
 
 ---
 
+## Delete Semantics: Soft Delete
+
+**Services use soft delete.** Unlike Clients (which use hard delete with FK guard), Services are marked as deleted but preserved in the database.
+
+**Rationale:**
+- Orders store service data as snapshots at creation time
+- Historical orders must remain valid and auditable
+- Deleted services may need to be restored
+- No referential integrity risk from soft-deleted services
+
+**Contrast with Clients:** Clients use hard delete because orphaned `user_id` references break FK integrity. Services do not have this constraint.
+
+---
+
 ## 1. Purpose
 
-Delete a service. This is a **soft delete** — the service is marked as deleted but remains in the database. This action can be undone.
+Delete a service. Sets `deleted_at` timestamp. The service remains in the database but is excluded from queries. This action can be undone.
 
 ---
 
@@ -88,7 +102,7 @@ Missing or invalid Bearer token.
 
 ### 404 Not Found
 
-Service does not exist.
+Service does not exist or is already soft-deleted.
 
 ```json
 {
@@ -99,7 +113,9 @@ Service does not exist.
 **Causes:**
 - Invalid UUID format
 - UUID does not match any service
-- Service is already soft-deleted
+- Service is already soft-deleted (`deleted_at IS NOT NULL`)
+
+**Note:** 400 is not applicable (no request body). 409 is not applicable (no FK guard for services).
 
 ---
 
@@ -107,62 +123,22 @@ Service does not exist.
 
 ### Soft Delete Behavior
 
-This endpoint performs a **soft delete**:
 - Sets `deleted_at = NOW()` on the service record
-- The service row remains in the database
-- The service no longer appears in list results
-- The service cannot be retrieved via GET
-- The action can be undone (restore functionality)
-
-### No FK Guard
-
-Unlike clients, services can be deleted even if they have:
-- Orders referencing them
-- Subscriptions referencing them
-- Assigned employees
-
-This is because:
-- Orders store service data as a snapshot at creation time
-- Deleting a service does not affect historical orders
-- The service data remains queryable for internal/audit purposes
-
-### Employee Assignments
-
-The `service_employees` junction table rows are **preserved** on soft delete. If the service is restored, employee assignments are still intact.
+- Service row remains in the database
+- Service excluded from list results
+- Service returns 404 on retrieve
+- Employee assignments preserved in `service_employees`
 
 ### Idempotency
 
-- Deleting an already-deleted service returns 404
-- The operation is not truly idempotent
-- First delete succeeds with 204, subsequent deletes return 404
+- First delete: 204 No Content
+- Subsequent deletes: 404 Not Found
+- Not idempotent
 
 ### Impact on Existing Orders
 
-Soft-deleting a service has **no impact** on existing orders:
-- Orders that reference this service remain valid
-- Order data is not modified
-- Historical reporting remains accurate
-
-New orders cannot be created for a deleted service. The service will not appear in service selection interfaces.
+None. Orders store service snapshots. Historical data remains valid.
 
 ### Restoring Deleted Services
 
-To restore a soft-deleted service (if implemented):
-- Clear the `deleted_at` field
-- Service reappears in list results
-- Service becomes orderable again
-
-Restoration is **not currently exposed** via API. Manual database intervention is required.
-
-### Different from Client Delete
-
-| Aspect | Client Delete | Service Delete |
-|--------|---------------|----------------|
-| Type | Hard delete | Soft delete |
-| FK Guard | Yes (409 if dependencies) | No |
-| Reversible | No | Yes (via restore) |
-| Data preserved | No | Yes |
-
-This difference exists because:
-- Clients are identity records; orphaned client IDs break referential integrity
-- Services are catalog items; deleted services should be preserved for historical accuracy
+Not exposed via API. Requires direct database update to clear `deleted_at`.
