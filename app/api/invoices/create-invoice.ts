@@ -153,7 +153,8 @@ export async function createInvoice(
   const invoiceNumber = `INV-${String((count || 0) + 1).padStart(5, "0")}`;
 
   // Snapshot billing address
-  const clientAddress = client.addresses as Record<string, unknown> | null;
+  const addressArray = client.addresses as Record<string, unknown>[] | null;
+  const clientAddress = Array.isArray(addressArray) && addressArray.length > 0 ? addressArray[0] : null;
   const billingAddress = clientAddress ? {
     line_1: clientAddress.line_1,
     line_2: clientAddress.line_2,
