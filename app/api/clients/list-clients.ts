@@ -159,7 +159,7 @@ function serializeClient(client: ClientRow) {
   };
 }
 
-export async function listClients(request: NextRequest) {
+export async function listClients(request: NextRequest, _ownerId: string | null) {
   const { searchParams } = new URL(request.url);
 
   const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10), 1), 100);

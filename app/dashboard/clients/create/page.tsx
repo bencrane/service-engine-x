@@ -10,6 +10,7 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
+import { createClientAction } from "@/app/actions/clients";
 
 export default function CreateClientPage() {
   const router = useRouter();
@@ -41,49 +42,37 @@ export default function CreateClientPage() {
     setIsSubmitting(true);
     setError(null);
 
-    // Build the payload with nested address object
-    const payload: Record<string, unknown> = {
-      name_f: formData.name_f,
-      name_l: formData.name_l,
-      email: formData.email,
-    };
-
-    if (formData.phone) payload.phone = formData.phone;
-    if (formData.company) payload.company = formData.company;
-    if (formData.note) payload.note = formData.note;
-
-    // Only include address if any address field is filled
-    if (
+    // Build address object if any field is filled
+    const address =
       formData.address_line_1 ||
       formData.address_line_2 ||
       formData.city ||
       formData.state ||
       formData.postcode ||
       formData.country
-    ) {
-      payload.address = {
-        line_1: formData.address_line_1 || undefined,
-        line_2: formData.address_line_2 || undefined,
-        city: formData.city || undefined,
-        state: formData.state || undefined,
-        postcode: formData.postcode || undefined,
-        country: formData.country || undefined,
-      };
-    }
+        ? {
+            line_1: formData.address_line_1 || undefined,
+            line_2: formData.address_line_2 || undefined,
+            city: formData.city || undefined,
+            state: formData.state || undefined,
+            postcode: formData.postcode || undefined,
+            country: formData.country || undefined,
+          }
+        : undefined;
 
     try {
-      const response = await fetch("https://serviceengine.xyz/api/clients", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(payload),
+      const result = await createClientAction({
+        name_f: formData.name_f,
+        name_l: formData.name_l,
+        email: formData.email,
+        phone: formData.phone || undefined,
+        company: formData.company || undefined,
+        note: formData.note || undefined,
+        address,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Error: ${response.status}`);
+      if (!result.success) {
+        throw new Error(result.error || "Failed to create client");
       }
 
       // Success - redirect to clients page

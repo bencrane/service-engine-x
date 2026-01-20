@@ -1,29 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listClients } from "./list-clients";
 import { createClient } from "./create-client";
-
-function getAuthToken(request: NextRequest): string | null {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return null;
-  }
-  return authHeader.slice(7);
-}
+import { validateApiToken, extractBearerToken } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
-  const token = getAuthToken(request);
+  const token = extractBearerToken(request.headers.get("authorization"));
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return listClients(request);
+  const auth = await validateApiToken(token);
+  if (!auth.valid) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  return listClients(request, auth.userId);
 }
 
 export async function POST(request: NextRequest) {
-  const token = getAuthToken(request);
+  const token = extractBearerToken(request.headers.get("authorization"));
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return createClient(request);
+  const auth = await validateApiToken(token);
+  if (!auth.valid) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  return createClient(request, auth.userId);
 }

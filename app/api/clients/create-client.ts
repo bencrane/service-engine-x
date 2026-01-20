@@ -148,7 +148,7 @@ function generateAffiliateLink(): string {
   return `https://example.com/r/${code}`;
 }
 
-export async function createClient(request: NextRequest) {
+export async function createClient(request: NextRequest, _ownerId: string | null) {
   let body: CreateClientBody;
   try {
     body = await request.json();
