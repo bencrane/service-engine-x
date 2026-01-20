@@ -1,7 +1,7 @@
 # List Order Messages
 
 ```
-GET /api/order-messages/{order_id}
+GET /api/orders/{id}/messages
 ```
 
 ---
@@ -34,7 +34,7 @@ Authorization: Bearer {token}
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `order_id` | UUID | **Yes** | Order identifier. |
+| `id` | UUID | **Yes** | Order identifier. |
 
 ### Query Parameters
 
@@ -72,6 +72,7 @@ None. Read-only operation.
       "user_id": "uuid-or-null",
       "message": "Work has been completed.",
       "staff_only": false,
+      "files": ["https://storage.example.com/file1.pdf"],
       "created_at": "2024-01-16T14:22:00+00:00"
     },
     {
@@ -80,6 +81,7 @@ None. Read-only operation.
       "user_id": "uuid",
       "message": "Internal note: verified deliverables",
       "staff_only": true,
+      "files": [],
       "created_at": "2024-01-15T10:30:00+00:00"
     }
   ],
@@ -110,6 +112,7 @@ None. Read-only operation.
 | `user_id` | UUID | Yes | Author (null if user deleted) |
 | `message` | string | No | Message content |
 | `staff_only` | boolean | No | Staff-only visibility flag |
+| `files` | array[string] | No | File URLs/IDs (empty array if none) |
 | `created_at` | datetime | No | Creation timestamp |
 
 ---
@@ -123,6 +126,7 @@ None. Read-only operation.
 | `user_id` | Read-only | Author; null if user was deleted (ON DELETE SET NULL) |
 | `message` | Read-only | Immutable after creation |
 | `staff_only` | Read-only | Immutable after creation |
+| `files` | Read-only | File URLs/IDs; immutable after creation |
 | `created_at` | Read-only | Auto-set at creation |
 
 **Note:** All fields are read-only in list context. Messages are immutable — there is no update endpoint.
@@ -182,9 +186,13 @@ Filtering is handled at the query level based on the authenticated user's role.
 
 The message content remains intact even when the author is deleted.
 
-### No File Attachments
+### File Attachments
 
-File attachments are **not supported** in the current implementation. The `files` field from SPP is deferred.
+File attachments are supported via the `files` field:
+- Stored as JSONB array in `order_messages.files`
+- Contains URLs or file IDs (strings)
+- No upload mechanism — files must be stored externally first
+- Empty array `[]` if no attachments
 
 ### Message Immutability
 

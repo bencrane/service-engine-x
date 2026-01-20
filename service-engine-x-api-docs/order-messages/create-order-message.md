@@ -1,7 +1,7 @@
 # Create Order Message
 
 ```
-POST /api/order-messages/{order_id}
+POST /api/orders/{id}/messages
 ```
 
 ---
@@ -30,7 +30,7 @@ Authorization: Bearer {token}
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `order_id` | UUID | **Yes** | Order identifier. |
+| `id` | UUID | **Yes** | Order identifier. |
 
 ### Request Headers
 
@@ -47,7 +47,11 @@ Authorization: Bearer {token}
 {
   "message": "Work has been completed. Please review.",
   "user_id": "uuid",
-  "staff_only": false
+  "staff_only": false,
+  "files": [
+    "https://storage.example.com/deliverable.pdf",
+    "https://storage.example.com/report.xlsx"
+  ]
 }
 ```
 
@@ -56,8 +60,9 @@ Authorization: Bearer {token}
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `message` | string | **Yes** | — | Message content. Non-empty. |
-| `user_id` | UUID | No | Authenticated user | Author override. |
+| `user_id` | UUID | No | Authenticated user | Author override (system/internal use only). |
 | `staff_only` | boolean | No | `false` | If true, only staff can see. |
+| `files` | array[string] | No | `[]` | File URLs or IDs. Must be pre-uploaded. |
 
 ### Validation Rules
 
@@ -66,6 +71,7 @@ Authorization: Bearer {token}
 | `message` | Required. Non-empty string. |
 | `user_id` | If provided, must reference existing user. |
 | `staff_only` | Must be boolean if provided. |
+| `files` | Must be array of strings if provided. |
 
 ---
 
@@ -74,8 +80,10 @@ Authorization: Bearer {token}
 | Effect | Description |
 |--------|-------------|
 | **Message created** | New row in `order_messages` table |
-| **Order timestamp updated** | `orders.last_message_at` set to message `created_at` |
+| **Order timestamp updated** | `orders.last_message_at` set to message `created_at` **(required)** |
 | **Order updated_at touched** | `orders.updated_at` refreshed |
+
+**Note:** Updating `orders.last_message_at` is mandatory, not optional. This enables sorting/filtering orders by recent activity.
 
 ---
 
@@ -90,6 +98,10 @@ Authorization: Bearer {token}
   "user_id": "uuid",
   "message": "Work has been completed. Please review.",
   "staff_only": false,
+  "files": [
+    "https://storage.example.com/deliverable.pdf",
+    "https://storage.example.com/report.xlsx"
+  ],
   "created_at": "2024-01-16T14:22:00+00:00"
 }
 ```
@@ -103,6 +115,7 @@ Authorization: Bearer {token}
 | `user_id` | UUID | Yes | Author (from request or authenticated user) |
 | `message` | string | No | Message content |
 | `staff_only` | boolean | No | Visibility flag |
+| `files` | array[string] | No | File URLs/IDs (empty array if none) |
 | `created_at` | datetime | No | Creation timestamp |
 
 ---
@@ -116,6 +129,7 @@ Authorization: Bearer {token}
 | `user_id` | Write (optional) | Defaults to authenticated user if omitted |
 | `message` | Write (required) | Immutable after creation |
 | `staff_only` | Write (optional) | Defaults to `false`; immutable after creation |
+| `files` | Write (optional) | Defaults to `[]`; immutable after creation |
 | `created_at` | Read-only | Auto-set to `NOW()` |
 
 ### User ID Defaulting Behavior
@@ -126,7 +140,7 @@ When `user_id` is not provided in the request:
 
 When `user_id` is provided:
 - Must reference a valid, existing user
-- Allows posting on behalf of another user (e.g., system messages, migrations)
+- Intended for system/internal usage only (e.g., automated messages, migrations)
 - 422 returned if user does not exist
 
 ### Write-Time Ignored Fields
@@ -239,9 +253,19 @@ This allows sorting/filtering orders by recent activity.
 
 Cannot create messages on soft-deleted orders. Returns 404.
 
-### No File Attachments
+### File Attachments
 
-File attachments (`attachments` field in SPP) are **not supported** in the current implementation. This feature is deferred.
+File attachments are supported via the `files` field:
+
+```json
+{ "files": ["https://storage.example.com/file1.pdf", "file-id-abc123"] }
+```
+
+- Stored as JSONB array in `order_messages.files`
+- Accepts URLs or file IDs (strings)
+- **No upload mechanism** — files must be stored externally first (e.g., S3, cloud storage)
+- Pass `[]` or omit to create message without attachments
+- Files are immutable after creation (cannot add/remove later)
 
 ### Created_at Not Overridable
 
