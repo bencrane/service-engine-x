@@ -191,7 +191,8 @@ export async function createProposal(request: NextRequest, orgId: string) {
     signed_at: proposal.signed_at,
     converted_order_id: proposal.converted_order_id,
     items: (proposalItems || []).map(item => {
-      const service = item.services as { id: string; name: string } | null;
+      const serviceArray = item.services as { id: string; name: string }[] | null;
+      const service = Array.isArray(serviceArray) ? serviceArray[0] || null : null;
       return {
         id: item.id,
         service_id: item.service_id,

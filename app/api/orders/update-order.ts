@@ -57,8 +57,10 @@ async function fetchClient(userId: string) {
 
   if (!user) return null;
 
-  const address = user.addresses as Record<string, unknown> | null;
-  const role = user.roles as Record<string, unknown> | null;
+  const addressArray = user.addresses as Record<string, unknown>[] | null;
+  const address = Array.isArray(addressArray) ? addressArray[0] || null : null;
+  const roleArray = user.roles as Record<string, unknown>[] | null;
+  const role = Array.isArray(roleArray) ? roleArray[0] || null : null;
 
   return {
     id: user.id,

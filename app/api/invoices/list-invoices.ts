@@ -143,8 +143,10 @@ function formatInvoiceResponse(inv: Record<string, unknown>): Record<string, unk
 }
 
 function formatClientResponse(client: Record<string, unknown>): Record<string, unknown> {
-  const address = client.addresses as Record<string, unknown> | null;
-  const role = client.roles as Record<string, unknown> | null;
+  const addressArray = client.addresses as Record<string, unknown>[] | null;
+  const address = Array.isArray(addressArray) ? addressArray[0] || null : null;
+  const roleArray = client.roles as Record<string, unknown>[] | null;
+  const role = Array.isArray(roleArray) ? roleArray[0] || null : null;
 
   return {
     id: client.id,
