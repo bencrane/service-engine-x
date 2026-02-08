@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
-from app.routers import health_router, clients_router
+from app.routers import health_router, clients_router, services_router
 
 settings = get_settings()
 
@@ -67,6 +67,7 @@ async def validation_exception_handler(
 # Include routers
 app.include_router(health_router)
 app.include_router(clients_router)
+app.include_router(services_router)
 
 
 @app.get("/api", tags=["Index"])

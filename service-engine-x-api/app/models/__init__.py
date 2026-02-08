@@ -15,6 +15,12 @@ from app.models.clients import (
     ClientUpdate,
     ClientResponse,
 )
+from app.models.services import (
+    MetadataItem,
+    ServiceCreate,
+    ServiceUpdate,
+    ServiceResponse,
+)
 
 __all__ = [
     "ErrorResponse",
@@ -28,4 +34,8 @@ __all__ = [
     "ClientCreate",
     "ClientUpdate",
     "ClientResponse",
+    "MetadataItem",
+    "ServiceCreate",
+    "ServiceUpdate",
+    "ServiceResponse",
 ]
