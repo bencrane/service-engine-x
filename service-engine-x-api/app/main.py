@@ -17,6 +17,9 @@ from app.routers import (
     proposals_router,
     invoices_router,
     tickets_router,
+    engagements_router,
+    projects_router,
+    conversations_router,
 )
 
 settings = get_settings()
@@ -110,6 +113,9 @@ app.include_router(order_messages_router)
 app.include_router(proposals_router)
 app.include_router(invoices_router)
 app.include_router(tickets_router)
+app.include_router(engagements_router)
+app.include_router(projects_router)
+app.include_router(conversations_router)
 
 
 def custom_openapi() -> dict:
@@ -195,6 +201,9 @@ async def api_index() -> dict:
             "proposals": "/api/proposals",
             "invoices": "/api/invoices",
             "tickets": "/api/tickets",
+            "engagements": "/api/engagements",
+            "projects": "/api/projects",
+            "conversations": "/api/conversations",
             "openapi": "/api/openapi.json",
         },
     }

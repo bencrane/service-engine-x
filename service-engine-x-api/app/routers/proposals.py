@@ -58,6 +58,7 @@ def serialize_proposal_list_item(proposal: dict[str, Any]) -> ProposalListItem:
         sent_at=proposal.get("sent_at"),
         signed_at=proposal.get("signed_at"),
         converted_order_id=proposal.get("converted_order_id"),
+        converted_engagement_id=proposal.get("converted_engagement_id"),
     )
 
 
@@ -102,6 +103,7 @@ def serialize_proposal(proposal: dict[str, Any], items: list[dict[str, Any]]) ->
         sent_at=proposal.get("sent_at"),
         signed_at=proposal.get("signed_at"),
         converted_order_id=proposal.get("converted_order_id"),
+        converted_engagement_id=proposal.get("converted_engagement_id"),
         items=[serialize_proposal_item(item) for item in items],
     )
 
@@ -372,12 +374,19 @@ async def sign_proposal(
     proposal_id: str,
     auth: AuthContext = Depends(get_current_org),
 ) -> dict[str, Any]:
-    """Sign a proposal (Sent -> Signed), creates an order."""
+    """
+    Sign a proposal (Sent -> Signed).
+
+    Creates:
+    - An engagement (work relationship container)
+    - Projects for each proposal item
+    - An order (financial transaction record)
+    """
     supabase = get_supabase()
 
     # Fetch proposal with items
     result = await supabase.table("proposals").select(
-        "*, proposal_items (*, services:service_id (id, name, price, currency))"
+        "*, proposal_items (*, services:service_id (id, name, price, currency, description))"
     ).eq("id", proposal_id).eq("org_id", auth.org_id).is_("deleted_at", "null").execute()
 
     if not result.data:
@@ -431,11 +440,70 @@ async def sign_proposal(
             if new_user_result.data:
                 client_id = new_user_result.data[0]["id"]
 
-    # Get primary item details for order
-    primary_item = items[0] if items else None
+    # =========================================================================
+    # CREATE ENGAGEMENT (work relationship container)
+    # =========================================================================
+    client_name = f"{proposal['client_name_f']} {proposal['client_name_l']}".strip()
+    engagement_name = f"{client_name} - {proposal.get('notes', 'Engagement')[:50] if proposal.get('notes') else 'New Engagement'}"
 
-    # Handle Supabase join returning array for services
+    engagement_data = {
+        "org_id": auth.org_id,
+        "client_id": client_id,
+        "name": engagement_name,
+        "status": 1,  # Active
+        "proposal_id": proposal_id,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    engagement_result = await supabase.table("engagements").insert(engagement_data).select().execute()
+
+    if not engagement_result.data:
+        raise HTTPException(status_code=500, detail="Failed to create engagement")
+
+    engagement = engagement_result.data[0]
+
+    # =========================================================================
+    # CREATE PROJECTS (one per proposal item)
+    # =========================================================================
+    projects_created = []
+
+    for item in items:
+        # Get service info
+        services = item.get("services")
+        if isinstance(services, list) and len(services) > 0:
+            service = services[0]
+        elif isinstance(services, dict):
+            service = services
+        else:
+            service = None
+
+        project_name = service.get("name") if service else f"Project {len(projects_created) + 1}"
+        project_description = service.get("description") if service else None
+
+        project_data = {
+            "engagement_id": engagement["id"],
+            "org_id": auth.org_id,
+            "name": project_name,
+            "description": project_description,
+            "status": 1,  # Active
+            "phase": 1,   # Kickoff
+            "service_id": item["service_id"],
+            "created_at": now,
+            "updated_at": now,
+        }
+
+        project_result = await supabase.table("projects").insert(project_data).select().execute()
+
+        if project_result.data:
+            projects_created.append(project_result.data[0])
+
+    # =========================================================================
+    # CREATE ORDER (financial transaction record)
+    # =========================================================================
+    primary_item = items[0] if items else None
     primary_service = None
+
     if primary_item:
         services = primary_item.get("services")
         if isinstance(services, list) and len(services) > 0:
@@ -446,7 +514,6 @@ async def sign_proposal(
     service_name = primary_service.get("name") if primary_service else "Proposal Order"
     currency = primary_service.get("currency") if primary_service else "USD"
 
-    # Create order
     order_data = {
         "org_id": auth.org_id,
         "number": generate_order_number(),
@@ -457,10 +524,12 @@ async def sign_proposal(
         "currency": currency,
         "quantity": 1,
         "status": 0,  # Unpaid
+        "engagement_id": engagement["id"],  # Link to engagement
         "note": f"Created from proposal. {proposal.get('notes') or ''}".strip(),
         "form_data": {},
         "metadata": {
             "proposal_id": proposal["id"],
+            "engagement_id": engagement["id"],
             "proposal_items": [
                 {
                     "service_id": item["service_id"],
@@ -486,21 +555,27 @@ async def sign_proposal(
 
     order = order_result.data[0]
 
-    # Update proposal
+    # =========================================================================
+    # UPDATE PROPOSAL
+    # =========================================================================
     await supabase.table("proposals").update({
         "status": 2,
         "signed_at": now,
         "updated_at": now,
         "converted_order_id": order["id"],
+        "converted_engagement_id": engagement["id"],
     }).eq("id", proposal_id).execute()
 
-    # Update local proposal dict
+    # Update local proposal dict for response
     proposal["status"] = 2
     proposal["signed_at"] = now
     proposal["updated_at"] = now
     proposal["converted_order_id"] = order["id"]
+    proposal["converted_engagement_id"] = engagement["id"]
 
-    # Build response
+    # =========================================================================
+    # BUILD RESPONSE
+    # =========================================================================
     proposal_response = serialize_proposal(proposal, items)
 
     order_response = {
@@ -514,11 +589,36 @@ async def sign_proposal(
         "quantity": order["quantity"],
         "status": ORDER_STATUS_MAP.get(order["status"], "Unknown"),
         "status_id": order["status"],
+        "engagement_id": order["engagement_id"],
         "note": order["note"],
         "created_at": order["created_at"],
     }
 
+    engagement_response = {
+        "id": engagement["id"],
+        "client_id": engagement["client_id"],
+        "name": engagement["name"],
+        "status": "Active",
+        "status_id": 1,
+        "created_at": engagement["created_at"],
+    }
+
+    projects_response = [
+        {
+            "id": p["id"],
+            "name": p["name"],
+            "status": "Active",
+            "status_id": 1,
+            "phase": "Kickoff",
+            "phase_id": 1,
+            "service_id": p.get("service_id"),
+        }
+        for p in projects_created
+    ]
+
     return {
         "proposal": proposal_response.model_dump(),
+        "engagement": engagement_response,
+        "projects": projects_response,
         "order": order_response,
     }

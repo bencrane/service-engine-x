@@ -9,6 +9,9 @@ from app.routers.order_messages import router as order_messages_router
 from app.routers.proposals import router as proposals_router
 from app.routers.invoices import router as invoices_router
 from app.routers.tickets import router as tickets_router
+from app.routers.engagements import router as engagements_router
+from app.routers.projects import router as projects_router
+from app.routers.conversations import router as conversations_router
 
 __all__ = [
     "health_router",
@@ -20,4 +23,7 @@ __all__ = [
     "proposals_router",
     "invoices_router",
     "tickets_router",
+    "engagements_router",
+    "projects_router",
+    "conversations_router",
 ]
