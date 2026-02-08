@@ -3,6 +3,7 @@
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
@@ -28,10 +29,35 @@ app = FastAPI(
     redoc_url="/redoc" if settings.debug else None,
 )
 
-# CORS middleware
+# CORS middleware - allowed origins
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:3002",
+    "http://localhost:3003",
+    "http://localhost:3004",
+    "http://localhost:3005",
+    "http://localhost:3006",
+    "http://localhost:3007",
+    "http://localhost:3008",
+    "http://localhost:3009",
+    "http://localhost:4000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://127.0.0.1:3002",
+    "http://127.0.0.1:3003",
+    "http://127.0.0.1:3004",
+    "http://127.0.0.1:3005",
+    "http://127.0.0.1:3006",
+    "http://127.0.0.1:3007",
+    "http://127.0.0.1:3008",
+    "http://127.0.0.1:3009",
+    "http://127.0.0.1:4000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -86,6 +112,75 @@ app.include_router(invoices_router)
 app.include_router(tickets_router)
 
 
+def custom_openapi() -> dict:
+    """Generate custom OpenAPI schema with security definitions."""
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    openapi_schema = get_openapi(
+        title=settings.app_name,
+        version=settings.app_version,
+        description="Service Engine X REST API - Multi-tenant SaaS platform for service businesses",
+        routes=app.routes,
+    )
+
+    # Add security scheme for Bearer token authentication
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "API Token",
+            "description": "API token authentication. Get your token from the dashboard.",
+        }
+    }
+
+    # Add global security requirement (except for health and openapi endpoints)
+    openapi_schema["security"] = [{"BearerAuth": []}]
+
+    # Add common error responses to components
+    openapi_schema["components"]["schemas"]["ErrorResponse"] = {
+        "type": "object",
+        "properties": {
+            "message": {"type": "string", "example": "The given data was invalid."},
+            "errors": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                },
+                "example": {"field_name": ["Error message"]}
+            }
+        },
+        "required": ["message"]
+    }
+
+    openapi_schema["components"]["schemas"]["NotFoundResponse"] = {
+        "type": "object",
+        "properties": {
+            "detail": {"type": "string", "example": "Not Found"}
+        }
+    }
+
+    openapi_schema["components"]["schemas"]["UnauthorizedResponse"] = {
+        "type": "object",
+        "properties": {
+            "detail": {"type": "string", "example": "Unauthorized"}
+        }
+    }
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
+
+
+@app.get("/api/openapi.json", tags=["OpenAPI"], include_in_schema=False)
+async def get_openapi_spec() -> dict:
+    """Return the OpenAPI specification as JSON."""
+    return app.openapi()
+
+
 @app.get("/api", tags=["Index"])
 async def api_index() -> dict:
     """API index endpoint listing available resources."""
@@ -100,5 +195,6 @@ async def api_index() -> dict:
             "proposals": "/api/proposals",
             "invoices": "/api/invoices",
             "tickets": "/api/tickets",
+            "openapi": "/api/openapi.json",
         },
     }
