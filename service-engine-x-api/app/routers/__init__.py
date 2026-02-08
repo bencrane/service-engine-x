@@ -7,6 +7,8 @@ from app.routers.orders import router as orders_router
 from app.routers.order_tasks import router as order_tasks_router
 from app.routers.order_messages import router as order_messages_router
 from app.routers.proposals import router as proposals_router
+from app.routers.proposals import public_router as public_proposals_router
+from app.routers.proposals import webhook_router as webhooks_router
 from app.routers.invoices import router as invoices_router
 from app.routers.tickets import router as tickets_router
 from app.routers.engagements import router as engagements_router
@@ -21,6 +23,8 @@ __all__ = [
     "order_tasks_router",
     "order_messages_router",
     "proposals_router",
+    "public_proposals_router",
+    "webhooks_router",
     "invoices_router",
     "tickets_router",
     "engagements_router",
