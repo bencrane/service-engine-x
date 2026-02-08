@@ -15,6 +15,7 @@ from app.routers import (
     order_messages_router,
     proposals_router,
     invoices_router,
+    tickets_router,
 )
 
 settings = get_settings()
@@ -82,6 +83,7 @@ app.include_router(order_tasks_router)
 app.include_router(order_messages_router)
 app.include_router(proposals_router)
 app.include_router(invoices_router)
+app.include_router(tickets_router)
 
 
 @app.get("/api", tags=["Index"])
