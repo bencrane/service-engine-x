@@ -64,22 +64,12 @@ def serialize_proposal_list_item(proposal: dict[str, Any]) -> ProposalListItem:
 
 def serialize_proposal_item(item: dict[str, Any]) -> ProposalItemResponse:
     """Serialize a proposal item."""
-    # Handle Supabase join returning array
-    services = item.get("services")
-    if isinstance(services, list) and len(services) > 0:
-        service = services[0]
-    elif isinstance(services, dict):
-        service = services
-    else:
-        service = None
-
     return ProposalItemResponse(
         id=item["id"],
-        service_id=item["service_id"],
-        service_name=service.get("name") if service else None,
-        service_description=service.get("description") if service else None,
-        quantity=item.get("quantity", 1),
+        name=item["name"],
+        description=item.get("description"),
         price=str(item.get("price", "0.00")),
+        service_id=item.get("service_id"),
         created_at=item["created_at"],
     )
 
@@ -238,26 +228,27 @@ async def create_proposal(
     """Create a new proposal."""
     supabase = get_supabase()
 
-    # Validate all service_ids exist and belong to org
-    service_ids = [item.service_id for item in body.items]
-    services_result = await supabase.table("services").select("id").eq(
-        "org_id", auth.org_id
-    ).is_("deleted_at", "null").in_("id", service_ids).execute()
+    # Validate service_ids if provided (optional template references)
+    service_ids = [item.service_id for item in body.items if item.service_id]
+    if service_ids:
+        services_result = await supabase.table("services").select("id").eq(
+            "org_id", auth.org_id
+        ).is_("deleted_at", "null").in_("id", service_ids).execute()
 
-    found_service_ids = {s["id"] for s in (services_result.data or [])}
-    missing_services = [sid for sid in service_ids if sid not in found_service_ids]
+        found_service_ids = {s["id"] for s in (services_result.data or [])}
+        missing_services = [sid for sid in service_ids if sid not in found_service_ids]
 
-    if missing_services:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "message": "The given data was invalid.",
-                "errors": {"items": [f"Service with ID {missing_services[0]} does not exist."]},
-            },
-        )
+        if missing_services:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "message": "The given data was invalid.",
+                    "errors": {"items": [f"Service with ID {missing_services[0]} does not exist."]},
+                },
+            )
 
-    # Calculate total from items
-    total = sum(item.quantity * item.price for item in body.items)
+    # Calculate total from item prices
+    total = sum(item.price for item in body.items)
 
     # Create proposal
     proposal_data = {
@@ -278,20 +269,19 @@ async def create_proposal(
 
     proposal = proposal_result.data[0]
 
-    # Create proposal items
+    # Create proposal items (each defines a project)
     item_rows = [
         {
             "proposal_id": proposal["id"],
-            "service_id": item.service_id,
-            "quantity": item.quantity,
+            "name": item.name,
+            "description": item.description,
             "price": item.price,
+            "service_id": item.service_id,
         }
         for item in body.items
     ]
 
-    items_result = await supabase.table("proposal_items").insert(item_rows).select(
-        "*, services:service_id (id, name, description)"
-    ).execute()
+    items_result = await supabase.table("proposal_items").insert(item_rows).select("*").execute()
 
     if not items_result.data:
         # Clean up proposal if items failed
@@ -311,7 +301,7 @@ async def retrieve_proposal(
 
     # Fetch proposal with items
     result = await supabase.table("proposals").select(
-        "*, proposal_items (*, services:service_id (id, name, description))"
+        "*, proposal_items (*)"
     ).eq("id", proposal_id).eq("org_id", auth.org_id).is_("deleted_at", "null").execute()
 
     if not result.data:
@@ -333,7 +323,7 @@ async def send_proposal(
 
     # Fetch proposal with items
     result = await supabase.table("proposals").select(
-        "*, proposal_items (*, services:service_id (id, name))"
+        "*, proposal_items (*)"
     ).eq("id", proposal_id).eq("org_id", auth.org_id).is_("deleted_at", "null").execute()
 
     if not result.data:
@@ -386,7 +376,7 @@ async def sign_proposal(
 
     # Fetch proposal with items
     result = await supabase.table("proposals").select(
-        "*, proposal_items (*, services:service_id (id, name, price, currency, description))"
+        "*, proposal_items (*)"
     ).eq("id", proposal_id).eq("org_id", auth.org_id).is_("deleted_at", "null").execute()
 
     if not result.data:
@@ -469,26 +459,14 @@ async def sign_proposal(
     projects_created = []
 
     for item in items:
-        # Get service info
-        services = item.get("services")
-        if isinstance(services, list) and len(services) > 0:
-            service = services[0]
-        elif isinstance(services, dict):
-            service = services
-        else:
-            service = None
-
-        project_name = service.get("name") if service else f"Project {len(projects_created) + 1}"
-        project_description = service.get("description") if service else None
-
         project_data = {
             "engagement_id": engagement["id"],
             "org_id": auth.org_id,
-            "name": project_name,
-            "description": project_description,
+            "name": item["name"],
+            "description": item.get("description"),
             "status": 1,  # Active
             "phase": 1,   # Kickoff
-            "service_id": item["service_id"],
+            "service_id": item.get("service_id"),  # Optional template reference
             "created_at": now,
             "updated_at": now,
         }
@@ -502,26 +480,18 @@ async def sign_proposal(
     # CREATE ORDER (financial transaction record)
     # =========================================================================
     primary_item = items[0] if items else None
-    primary_service = None
 
-    if primary_item:
-        services = primary_item.get("services")
-        if isinstance(services, list) and len(services) > 0:
-            primary_service = services[0]
-        elif isinstance(services, dict):
-            primary_service = services
-
-    service_name = primary_service.get("name") if primary_service else "Proposal Order"
-    currency = primary_service.get("currency") if primary_service else "USD"
+    # Use primary item name or fallback
+    order_name = primary_item["name"] if primary_item else "Proposal Order"
 
     order_data = {
         "org_id": auth.org_id,
         "number": generate_order_number(),
         "user_id": client_id,
-        "service_id": primary_item["service_id"] if primary_item else None,
-        "service_name": service_name,
+        "service_id": primary_item.get("service_id") if primary_item else None,
+        "service_name": order_name,
         "price": proposal["total"],
-        "currency": currency,
+        "currency": "USD",
         "quantity": 1,
         "status": 0,  # Unpaid
         "engagement_id": engagement["id"],  # Link to engagement
@@ -532,16 +502,10 @@ async def sign_proposal(
             "engagement_id": engagement["id"],
             "proposal_items": [
                 {
-                    "service_id": item["service_id"],
-                    "service_name": (
-                        item["services"][0]["name"]
-                        if isinstance(item.get("services"), list) and item["services"]
-                        else item.get("services", {}).get("name")
-                        if isinstance(item.get("services"), dict)
-                        else None
-                    ),
-                    "quantity": item["quantity"],
+                    "name": item["name"],
+                    "description": item.get("description"),
                     "price": str(item["price"]),
+                    "service_id": item.get("service_id"),
                 }
                 for item in items
             ],

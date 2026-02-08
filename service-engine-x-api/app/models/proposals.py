@@ -13,11 +13,12 @@ PROPOSAL_STATUS_MAP: dict[int, str] = {
 
 
 class ProposalItemInput(BaseModel):
-    """Input schema for proposal item."""
+    """Input schema for proposal item (defines a project to be created)."""
 
-    service_id: str
-    quantity: int = Field(default=1, ge=1)
-    price: float = Field(ge=0)
+    name: str = Field(min_length=1, description="Project name")
+    description: str = Field(min_length=1, description="Project scope/description")
+    price: float = Field(ge=0, description="Project price")
+    service_id: str | None = Field(default=None, description="Optional service template reference")
 
 
 class CreateProposalRequest(BaseModel):
@@ -32,14 +33,13 @@ class CreateProposalRequest(BaseModel):
 
 
 class ProposalItemResponse(BaseModel):
-    """Response schema for proposal item."""
+    """Response schema for proposal item (represents a project to be created)."""
 
     id: str
-    service_id: str
-    service_name: str | None
-    service_description: str | None = None
-    quantity: int
+    name: str
+    description: str | None
     price: str
+    service_id: str | None = None
     created_at: str
 
 
