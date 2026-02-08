@@ -36,6 +36,13 @@ import { openapi as createOrderTask } from "./routes/orders/create-order-task";
 import { openapi as updateOrderTask } from "./routes/orders/update-order-task";
 import { openapi as deleteOrderTask } from "./routes/orders/delete-order-task";
 
+// Proposals endpoints
+import { openapi as listProposals } from "./routes/proposals/list-proposals";
+import { openapi as createProposal } from "./routes/proposals/create-proposal";
+import { openapi as retrieveProposal } from "./routes/proposals/retrieve-proposal";
+import { openapi as sendProposal } from "./routes/proposals/send-proposal";
+import { openapi as signProposal } from "./routes/proposals/sign-proposal";
+
 /**
  * Register all schemas
  */
@@ -74,6 +81,13 @@ function registerAllRoutes(): void {
   registerRoute(createOrderTask);
   registerRoute(updateOrderTask);
   registerRoute(deleteOrderTask);
+
+  // Proposals
+  registerRoute(listProposals);
+  registerRoute(createProposal);
+  registerRoute(retrieveProposal);
+  registerRoute(sendProposal);
+  registerRoute(signProposal);
 }
 
 /**

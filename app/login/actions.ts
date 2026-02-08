@@ -25,8 +25,8 @@ export async function login(_prevState: unknown, formData: FormData) {
     return { error: "Invalid email or password" };
   }
 
-  // Create session
-  await createSession(user.id);
+  // Create session (now includes org context)
+  await createSession(user.id, user.org_id);
 
   redirect("/dashboard");
 }

@@ -10,7 +10,8 @@ const STATUS_MAP: Record<number, string> = {
 };
 
 export async function retrieveInvoice(
-  id: string
+  id: string,
+  orgId: string
 ): Promise<{ data?: unknown; error?: string; status: number }> {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(id)) {
@@ -30,6 +31,7 @@ export async function retrieveInvoice(
       invoice_items (*)
     `)
     .eq("id", id)
+    .eq("org_id", orgId)
     .is("deleted_at", null)
     .single();
 

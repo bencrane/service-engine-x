@@ -159,7 +159,7 @@ function serializeClient(client: ClientRow) {
   };
 }
 
-export async function listClients(request: NextRequest, _ownerId: string | null) {
+export async function listClients(request: NextRequest, orgId: string) {
   const { searchParams } = new URL(request.url);
 
   const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10), 1), 100);
@@ -189,6 +189,7 @@ export async function listClients(request: NextRequest, _ownerId: string | null)
       address:addresses(*),
       role:roles(*)
     `, { count: "exact" })
+    .eq("org_id", orgId)
     .eq("role_id", clientRole.id);
 
   for (const [key, value] of searchParams.entries()) {

@@ -39,7 +39,8 @@ interface ValidationErrors {
 
 export async function createOrderTask(
   order_id: string,
-  input: CreateOrderTaskInput
+  input: CreateOrderTaskInput,
+  orgId: string
 ): Promise<{ data?: OrderTask; error?: string; errors?: ValidationErrors; status: number }> {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -94,6 +95,7 @@ export async function createOrderTask(
     .from("orders")
     .select("id")
     .eq("id", order_id)
+    .eq("org_id", orgId)
     .is("deleted_at", null)
     .single();
 
@@ -126,6 +128,7 @@ export async function createOrderTask(
 
   // Prepare task data
   const taskData = {
+    org_id: orgId,
     order_id,
     name: input.name.trim(),
     description: input.description ?? null,

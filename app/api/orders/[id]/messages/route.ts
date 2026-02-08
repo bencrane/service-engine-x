@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listOrderMessages } from "./list-order-messages";
 import { createOrderMessage } from "./create-order-message";
+import { validateApiToken, extractBearerToken } from "@/lib/auth";
 
 // GET /api/orders/{id}/messages
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const token = extractBearerToken(request.headers.get("authorization"));
+  if (!token) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const auth = await validateApiToken(token);
+  if (!auth.valid || !auth.orgId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id: order_id } = await params;
   const { searchParams } = new URL(request.url);
 
@@ -15,7 +26,7 @@ export async function GET(
 
   const baseUrl = new URL(request.url).origin;
 
-  const result = await listOrderMessages({ order_id, limit, page }, baseUrl);
+  const result = await listOrderMessages({ order_id, limit, page }, baseUrl, auth.orgId);
 
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: result.status });
@@ -29,6 +40,16 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const token = extractBearerToken(request.headers.get("authorization"));
+  if (!token) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const auth = await validateApiToken(token);
+  if (!auth.valid || !auth.orgId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id: order_id } = await params;
 
   let body;
@@ -41,22 +62,20 @@ export async function POST(
     );
   }
 
-  // TODO: Get authenticated user ID from session/token
-  // For now, use a placeholder - this should be replaced with actual auth
-  const authenticatedUserId = body.user_id || "00000000-0000-0000-0000-000000000000";
+  const authenticatedUserId = auth.userId || body.user_id || "00000000-0000-0000-0000-000000000000";
 
-  const result = await createOrderMessage(order_id, body, authenticatedUserId);
+  const result = await createOrderMessage(order_id, body, authenticatedUserId, auth.orgId);
 
   if (result.error) {
     const response: { error?: string; message?: string; errors?: Record<string, string[]> } = {};
-    
+
     if (result.errors) {
       response.message = result.error;
       response.errors = result.errors;
     } else {
       response.error = result.error;
     }
-    
+
     return NextResponse.json(response, { status: result.status });
   }
 

@@ -37,7 +37,8 @@ interface PaginatedResponse {
 
 export async function listOrderMessages(
   params: ListOrderMessagesParams,
-  baseUrl: string
+  baseUrl: string,
+  orgId: string
 ): Promise<{ data?: PaginatedResponse; error?: string; status: number }> {
 
   const { order_id, limit = 20, page = 1 } = params;
@@ -58,6 +59,7 @@ export async function listOrderMessages(
     .from("orders")
     .select("id")
     .eq("id", order_id)
+    .eq("org_id", orgId)
     .is("deleted_at", null)
     .single();
 

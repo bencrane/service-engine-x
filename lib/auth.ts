@@ -11,12 +11,13 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-export async function createSession(userId: string): Promise<string> {
+export async function createSession(userId: string, orgId: string): Promise<string> {
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
   await supabase.from("sessions").insert({
     user_id: userId,
+    org_id: orgId,
     token,
     expires_at: expiresAt.toISOString(),
   });
@@ -41,7 +42,7 @@ export async function getSession() {
 
   const { data: session } = await supabase
     .from("sessions")
-    .select("*, users(*)")
+    .select("*, org_id, users(*)")
     .eq("token", token)
     .gt("expires_at", new Date().toISOString())
     .single();
@@ -66,6 +67,7 @@ export async function destroySession() {
 export interface ApiAuthResult {
   valid: boolean;
   userId: string | null;
+  orgId: string | null;
   error?: string;
 }
 
@@ -75,7 +77,7 @@ export interface ApiAuthResult {
  */
 export async function validateApiToken(token: string): Promise<ApiAuthResult> {
   if (!token) {
-    return { valid: false, userId: null, error: "No token provided" };
+    return { valid: false, userId: null, orgId: null, error: "No token provided" };
   }
 
   // Hash the token to compare against stored hash
@@ -85,20 +87,20 @@ export async function validateApiToken(token: string): Promise<ApiAuthResult> {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const tokenHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
-  // Look up the token in the database
+  // Look up the token in the database (now includes org_id)
   const { data: tokenRecord, error } = await supabase
     .from("api_tokens")
-    .select("id, user_id, expires_at")
+    .select("id, user_id, org_id, expires_at")
     .eq("token_hash", tokenHash)
     .single();
 
   if (error || !tokenRecord) {
-    return { valid: false, userId: null, error: "Invalid token" };
+    return { valid: false, userId: null, orgId: null, error: "Invalid token" };
   }
 
   // Check if token is expired
   if (tokenRecord.expires_at && new Date(tokenRecord.expires_at) < new Date()) {
-    return { valid: false, userId: null, error: "Token expired" };
+    return { valid: false, userId: null, orgId: null, error: "Token expired" };
   }
 
   // Update last_used_at
@@ -107,7 +109,7 @@ export async function validateApiToken(token: string): Promise<ApiAuthResult> {
     .update({ last_used_at: new Date().toISOString() })
     .eq("id", tokenRecord.id);
 
-  return { valid: true, userId: tokenRecord.user_id };
+  return { valid: true, userId: tokenRecord.user_id, orgId: tokenRecord.org_id };
 }
 
 /**

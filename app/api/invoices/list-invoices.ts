@@ -18,7 +18,8 @@ const STATUS_MAP: Record<number, string> = {
 
 export async function listInvoices(
   params: ListInvoicesParams,
-  baseUrl: string
+  baseUrl: string,
+  orgId: string
 ): Promise<{ data?: unknown; error?: string; status: number }> {
   const { limit = 20, page = 1, sort = "created_at:desc", filters = {} } = params;
 
@@ -30,7 +31,7 @@ export async function listInvoices(
   const [sortField, sortDir] = sort.split(":");
   const ascending = sortDir === "asc";
 
-  // Build query - exclude soft-deleted
+  // Build query - exclude soft-deleted, filter by org
   let query = supabase
     .from("invoices")
     .select(`
@@ -42,6 +43,7 @@ export async function listInvoices(
       ),
       invoice_items (*)
     `, { count: "exact" })
+    .eq("org_id", orgId)
     .is("deleted_at", null);
 
   // Apply filters

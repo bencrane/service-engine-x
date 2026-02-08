@@ -83,7 +83,7 @@ function serializeService(service: ServiceRow) {
   };
 }
 
-export async function listServices(request: NextRequest) {
+export async function listServices(request: NextRequest, orgId: string) {
   const { searchParams } = new URL(request.url);
 
   const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10), 1), 100);
@@ -99,6 +99,7 @@ export async function listServices(request: NextRequest) {
   let query = supabase
     .from("services")
     .select("*", { count: "exact" })
+    .eq("org_id", orgId)
     .is("deleted_at", null);
 
   const filterableFields = ["id", "name", "recurring", "public", "price", "currency", "folder_id", "created_at"];
@@ -142,6 +143,7 @@ export async function listServices(request: NextRequest) {
   query = supabase
     .from("services")
     .select("*")
+    .eq("org_id", orgId)
     .is("deleted_at", null);
 
   for (const [key, value] of searchParams.entries()) {

@@ -20,23 +20,23 @@ export async function join(_prevState: unknown, formData: FormData) {
     return { error: "Email already exists" };
   }
 
-  // Create user
-  const passwordHash = await hashPassword(password);
-  const { data: user, error: userError } = await supabase
-    .from("users")
-    .insert({ email, password_hash: passwordHash })
-    .select()
+  // Create organization first
+  const slug = orgName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+
+  // Check if slug exists
+  const { data: existingOrg } = await supabase
+    .from("organizations")
+    .select("id")
+    .eq("slug", slug)
     .single();
 
-  if (userError || !user) {
-    return { error: "Failed to create account" };
+  if (existingOrg) {
+    return { error: "Organization name already taken" };
   }
 
-  // Create org
-  const slug = orgName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   const { data: org, error: orgError } = await supabase
-    .from("orgs")
-    .insert({ name: orgName, slug, owner_user_id: user.id })
+    .from("organizations")
+    .insert({ name: orgName, slug })
     .select()
     .single();
 
@@ -44,15 +44,40 @@ export async function join(_prevState: unknown, formData: FormData) {
     return { error: "Failed to create organization" };
   }
 
-  // Add user as owner in org_members
-  await supabase.from("org_members").insert({
-    org_id: org.id,
-    user_id: user.id,
-    role: "owner",
-  });
+  // Get administrator role
+  const { data: adminRole } = await supabase
+    .from("roles")
+    .select("id")
+    .eq("name", "Administrator")
+    .single();
 
-  // Create session
-  await createSession(user.id);
+  if (!adminRole) {
+    return { error: "System configuration error" };
+  }
+
+  // Create user with org_id
+  const passwordHash = await hashPassword(password);
+  const { data: user, error: userError } = await supabase
+    .from("users")
+    .insert({
+      email,
+      password_hash: passwordHash,
+      name_f: "",
+      name_l: "",
+      org_id: org.id,
+      role_id: adminRole.id,
+    })
+    .select()
+    .single();
+
+  if (userError || !user) {
+    // Rollback org creation
+    await supabase.from("organizations").delete().eq("id", org.id);
+    return { error: "Failed to create account" };
+  }
+
+  // Create session with org context
+  await createSession(user.id, org.id);
 
   redirect("/dashboard");
 }

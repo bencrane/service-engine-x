@@ -20,7 +20,8 @@ const STATUS_MAP: Record<number, string> = {
 export async function chargeInvoice(
   id: string,
   input: ChargeInvoiceInput,
-  clientIp: string
+  clientIp: string,
+  orgId: string
 ): Promise<{ data?: unknown; error?: string; errors?: ValidationErrors; status: number }> {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(id)) {
@@ -41,6 +42,7 @@ export async function chargeInvoice(
     .from("invoices")
     .select("*, users:user_id (*), invoice_items (*)")
     .eq("id", id)
+    .eq("org_id", orgId)
     .is("deleted_at", null)
     .single();
 
@@ -96,6 +98,7 @@ export async function chargeInvoice(
       const { data: order } = await supabase
         .from("orders")
         .insert({
+          org_id: orgId,
           user_id: invoice.user_id,
           service_id: item.service_id,
           invoice_id: invoice.id,

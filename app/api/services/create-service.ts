@@ -69,7 +69,7 @@ function isValidUUID(str: string): boolean {
   return uuidRegex.test(str);
 }
 
-export async function createService(request: NextRequest) {
+export async function createService(request: NextRequest, orgId: string) {
   let body: CreateServiceBody;
   try {
     body = await request.json();
@@ -174,6 +174,7 @@ export async function createService(request: NextRequest) {
   const { data: newService, error: serviceError } = await supabase
     .from("services")
     .insert({
+      org_id: orgId,
       name: body.name.trim(),
       description: body.description ?? null,
       recurring: body.recurring,

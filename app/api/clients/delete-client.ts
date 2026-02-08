@@ -6,7 +6,7 @@ function isValidUUID(str: string): boolean {
   return uuidRegex.test(str);
 }
 
-export async function deleteClient(id: string) {
+export async function deleteClient(id: string, orgId: string) {
   if (!isValidUUID(id)) {
     return NextResponse.json({ error: "Not Found" }, { status: 404 });
   }
@@ -25,6 +25,7 @@ export async function deleteClient(id: string) {
     .from("users")
     .select("id")
     .eq("id", id)
+    .eq("org_id", orgId)
     .eq("role_id", clientRole.id)
     .single();
 

@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chargeInvoice } from "./charge-invoice";
+import { validateApiToken, extractBearerToken } from "@/lib/auth";
 
 // POST /api/invoices/{id}/charge
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const token = extractBearerToken(request.headers.get("authorization"));
+  if (!token) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const auth = await validateApiToken(token);
+  if (!auth.valid || !auth.orgId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await params;
 
   let body;
@@ -16,11 +27,11 @@ export async function POST(
   }
 
   // Get client IP
-  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || 
-                   request.headers.get("x-real-ip") || 
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] ||
+                   request.headers.get("x-real-ip") ||
                    "unknown";
 
-  const result = await chargeInvoice(id, body, clientIp);
+  const result = await chargeInvoice(id, body, clientIp, auth.orgId);
 
   if (result.error) {
     const response: { error?: string; message?: string; errors?: Record<string, string[]> } = {};

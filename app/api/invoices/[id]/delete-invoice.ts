@@ -1,7 +1,8 @@
 import { supabase } from "@/lib/supabase";
 
 export async function deleteInvoice(
-  id: string
+  id: string,
+  orgId: string
 ): Promise<{ error?: string; status: number }> {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(id)) {
@@ -13,6 +14,7 @@ export async function deleteInvoice(
     .from("invoices")
     .select("id, deleted_at")
     .eq("id", id)
+    .eq("org_id", orgId)
     .single();
 
   if (fetchError || !invoice) {

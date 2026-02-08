@@ -10,7 +10,8 @@ const STATUS_MAP: Record<number, string> = {
 };
 
 export async function markInvoicePaid(
-  id: string
+  id: string,
+  orgId: string
 ): Promise<{ data?: unknown; error?: string; status: number }> {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(id)) {
@@ -22,6 +23,7 @@ export async function markInvoicePaid(
     .from("invoices")
     .select("*, users:user_id (*), invoice_items (*)")
     .eq("id", id)
+    .eq("org_id", orgId)
     .is("deleted_at", null)
     .single();
 
@@ -72,6 +74,7 @@ export async function markInvoicePaid(
       const { data: order } = await supabase
         .from("orders")
         .insert({
+          org_id: orgId,
           user_id: invoice.user_id,
           service_id: item.service_id,
           invoice_id: invoice.id,
@@ -96,6 +99,7 @@ export async function markInvoicePaid(
   if (invoice.recurring) {
     const recurring = invoice.recurring as { r_period_l: number; r_period_t: string };
     await supabase.from("subscriptions").insert({
+      org_id: orgId,
       user_id: invoice.user_id,
       invoice_id: invoice.id,
       status: 1,

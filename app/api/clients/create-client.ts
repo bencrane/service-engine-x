@@ -148,7 +148,7 @@ function generateAffiliateLink(): string {
   return `https://example.com/r/${code}`;
 }
 
-export async function createClient(request: NextRequest, _ownerId: string | null) {
+export async function createClient(request: NextRequest, orgId: string) {
   let body: CreateClientBody;
   try {
     body = await request.json();
@@ -218,6 +218,7 @@ export async function createClient(request: NextRequest, _ownerId: string | null
     const { data: newAddress, error: addressError } = await supabase
       .from("addresses")
       .insert({
+        org_id: orgId,
         line_1: body.address.line_1 || null,
         line_2: body.address.line_2 || null,
         city: body.address.city || null,
@@ -250,6 +251,7 @@ export async function createClient(request: NextRequest, _ownerId: string | null
   const { data: newUser, error: userError } = await supabase
     .from("users")
     .insert({
+      org_id: orgId,
       email: body.email.toLowerCase().trim(),
       name_f: body.name_f.trim(),
       name_l: body.name_l.trim(),

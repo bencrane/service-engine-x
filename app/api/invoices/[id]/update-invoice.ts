@@ -49,7 +49,8 @@ const STATUS_MAP: Record<number, string> = {
 
 export async function updateInvoice(
   id: string,
-  input: UpdateInvoiceInput
+  input: UpdateInvoiceInput,
+  orgId: string
 ): Promise<{ data?: unknown; error?: string; errors?: ValidationErrors; status: number }> {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(id)) {
@@ -61,6 +62,7 @@ export async function updateInvoice(
     .from("invoices")
     .select("*, users:user_id (*)")
     .eq("id", id)
+    .eq("org_id", orgId)
     .is("deleted_at", null)
     .single();
 

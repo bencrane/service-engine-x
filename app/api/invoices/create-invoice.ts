@@ -30,7 +30,8 @@ interface ValidationErrors {
 const VALID_STATUSES = [0, 1, 3, 4, 5, 7];
 
 export async function createInvoice(
-  input: CreateInvoiceInput
+  input: CreateInvoiceInput,
+  orgId: string
 ): Promise<{ data?: unknown; error?: string; errors?: ValidationErrors; status: number }> {
   const errors: ValidationErrors = {};
 
@@ -175,6 +176,7 @@ export async function createInvoice(
 
   // Create invoice
   const invoiceData = {
+    org_id: orgId,
     number: invoiceNumber,
     number_prefix: "INV-",
     user_id: clientId,

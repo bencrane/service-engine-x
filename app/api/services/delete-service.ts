@@ -6,7 +6,7 @@ function isValidUUID(str: string): boolean {
   return uuidRegex.test(str);
 }
 
-export async function deleteService(id: string) {
+export async function deleteService(id: string, orgId: string) {
   if (!isValidUUID(id)) {
     return NextResponse.json({ error: "Not Found" }, { status: 404 });
   }
@@ -15,6 +15,7 @@ export async function deleteService(id: string) {
     .from("services")
     .select("id")
     .eq("id", id)
+    .eq("org_id", orgId)
     .is("deleted_at", null)
     .single();
 

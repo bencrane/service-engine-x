@@ -140,7 +140,7 @@ function validateEmail(email: string): boolean {
   return emailRegex.test(email);
 }
 
-export async function updateClient(request: NextRequest, id: string) {
+export async function updateClient(request: NextRequest, id: string, orgId: string) {
   if (!isValidUUID(id)) {
     return NextResponse.json({ error: "Not Found" }, { status: 404 });
   }
@@ -166,6 +166,7 @@ export async function updateClient(request: NextRequest, id: string) {
     .from("users")
     .select("*")
     .eq("id", id)
+    .eq("org_id", orgId)
     .eq("role_id", clientRole.id)
     .single();
 

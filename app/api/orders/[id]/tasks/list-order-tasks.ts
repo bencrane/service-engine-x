@@ -49,7 +49,8 @@ interface PaginatedResponse {
 
 export async function listOrderTasks(
   params: ListOrderTasksParams,
-  baseUrl: string
+  baseUrl: string,
+  orgId: string
 ): Promise<{ data?: PaginatedResponse; error?: string; status: number }> {
   const { order_id, limit = 20, page = 1 } = params;
 
@@ -69,6 +70,7 @@ export async function listOrderTasks(
     .from("orders")
     .select("id")
     .eq("id", order_id)
+    .eq("org_id", orgId)
     .is("deleted_at", null)
     .single();
 

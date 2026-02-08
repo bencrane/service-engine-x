@@ -19,7 +19,7 @@ function isValidUUID(str: string): boolean {
   return uuidRegex.test(str);
 }
 
-export async function retrieveService(id: string) {
+export async function retrieveService(id: string, orgId: string) {
   if (!isValidUUID(id)) {
     return NextResponse.json({ error: "Not Found" }, { status: 404 });
   }
@@ -28,6 +28,7 @@ export async function retrieveService(id: string) {
     .from("services")
     .select("*")
     .eq("id", id)
+    .eq("org_id", orgId)
     .is("deleted_at", null)
     .single();
 

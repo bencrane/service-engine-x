@@ -24,7 +24,8 @@ interface ValidationErrors {
 export async function createOrderMessage(
   order_id: string,
   input: CreateOrderMessageInput,
-  authenticatedUserId: string
+  authenticatedUserId: string,
+  orgId: string
 ): Promise<{ data?: OrderMessage; error?: string; errors?: ValidationErrors; status: number }> {
 
   // Validate UUID format for order_id
@@ -71,6 +72,7 @@ export async function createOrderMessage(
     .from("orders")
     .select("id")
     .eq("id", order_id)
+    .eq("org_id", orgId)
     .is("deleted_at", null)
     .single();
 
@@ -100,6 +102,7 @@ export async function createOrderMessage(
 
   // Prepare message data
   const messageData = {
+    org_id: orgId,
     order_id,
     user_id: finalUserId,
     message: input.message.trim(),

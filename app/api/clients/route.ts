@@ -10,11 +10,11 @@ export async function GET(request: NextRequest) {
   }
 
   const auth = await validateApiToken(token);
-  if (!auth.valid) {
+  if (!auth.valid || !auth.orgId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return listClients(request, auth.userId);
+  return listClients(request, auth.orgId);
 }
 
 export async function POST(request: NextRequest) {
@@ -24,9 +24,9 @@ export async function POST(request: NextRequest) {
   }
 
   const auth = await validateApiToken(token);
-  if (!auth.valid) {
+  if (!auth.valid || !auth.orgId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return createClient(request, auth.userId);
+  return createClient(request, auth.orgId);
 }
