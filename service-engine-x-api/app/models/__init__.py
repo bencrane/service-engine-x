@@ -7,6 +7,14 @@ from app.models.common import (
     PaginationLinks,
     PaginationMeta,
 )
+from app.models.clients import (
+    AddressInput,
+    AddressResponse,
+    RoleResponse,
+    ClientCreate,
+    ClientUpdate,
+    ClientResponse,
+)
 
 __all__ = [
     "ErrorResponse",
@@ -14,4 +22,10 @@ __all__ = [
     "PaginatedResponse",
     "PaginationLinks",
     "PaginationMeta",
+    "AddressInput",
+    "AddressResponse",
+    "RoleResponse",
+    "ClientCreate",
+    "ClientUpdate",
+    "ClientResponse",
 ]
