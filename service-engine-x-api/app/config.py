@@ -14,9 +14,9 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
-    # Supabase
-    supabase_url: str
-    supabase_service_role_key: str
+    # Supabase (matches existing env var names)
+    service_engine_x_supabase_url: str
+    service_engine_x_supabase_service_role_key: str
 
     # API
     api_base_url: str = "http://localhost:8000"

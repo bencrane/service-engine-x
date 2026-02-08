@@ -12,8 +12,8 @@ def get_supabase() -> Client:
     """Get cached Supabase client instance."""
     settings = get_settings()
     return create_client(
-        settings.supabase_url,
-        settings.supabase_service_role_key,
+        settings.service_engine_x_supabase_url,
+        settings.service_engine_x_supabase_service_role_key,
     )
 
 
