@@ -15,7 +15,7 @@ from app.models.services import (
     ServiceResponse,
     ServiceUpdate,
 )
-from app.utils import build_pagination_response, is_valid_uuid
+from app.utils import build_pagination_response, format_currency, is_valid_uuid
 
 router = APIRouter(prefix="/api/services", tags=["Services"])
 
@@ -28,11 +28,11 @@ CURRENCY_SYMBOLS = {
 }
 
 
-def format_pretty_price(price: str | None, currency: str) -> str:
+def format_pretty_price(price: str | float | None, currency: str) -> str:
     """Format price with currency symbol."""
-    num_price = float(price or "0")
+    formatted = format_currency(price)
     symbol = CURRENCY_SYMBOLS.get(currency, f"{currency} ")
-    return f"{symbol}{num_price:.2f}"
+    return f"{symbol}{formatted}"
 
 
 def transform_metadata(metadata: list[MetadataItem] | None) -> dict[str, str]:

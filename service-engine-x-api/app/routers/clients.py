@@ -18,7 +18,7 @@ from app.models.clients import (
     ClientUpdate,
     RoleResponse,
 )
-from app.utils import build_pagination_response, is_valid_uuid
+from app.utils import build_pagination_response, format_currency, is_valid_uuid
 
 router = APIRouter(prefix="/api/clients", tags=["Clients"])
 
@@ -99,7 +99,7 @@ def serialize_client(
         tax_id=client.get("tax_id"),
         address=serialize_address(address),
         note=client.get("note"),
-        balance=client.get("balance", "0.00"),
+        balance=format_currency(client.get("balance")),
         spent=spent,
         optin=client.get("optin"),
         stripe_id=client.get("stripe_id"),

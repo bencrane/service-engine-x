@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.routers import (
+    auth_router,
     health_router,
     clients_router,
     services_router,
@@ -63,9 +64,12 @@ ALLOWED_ORIGINS = [
     "http://127.0.0.1:3010",
     "http://127.0.0.1:4000",
     "http://127.0.0.1:8000",
-    # Production
+    # Production — customer portals
     "https://client.revenueactivation.com",
     "https://revenueactivation.com",
+    "https://client.outboundsolutions.com",
+    "https://outboundsolutions.com",
+    # Production — API
     "https://api.serviceengine.xyz",
 ]
 
@@ -115,6 +119,7 @@ async def validation_exception_handler(
 
 
 # Include routers
+app.include_router(auth_router)
 app.include_router(health_router)
 app.include_router(clients_router)
 app.include_router(services_router)
@@ -207,6 +212,8 @@ async def api_index() -> dict:
         "name": settings.app_name,
         "version": settings.app_version,
         "endpoints": {
+            "auth_login": "/api/auth/login",
+            "auth_me": "/api/auth/me",
             "health": "/api/health",
             "clients": "/api/clients",
             "services": "/api/services",

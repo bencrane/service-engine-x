@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.auth.dependencies import AuthContext, get_current_org
 from app.database import get_supabase
+from app.utils import format_currency
 from app.models.proposals import (
     PROPOSAL_STATUS_MAP,
     CreateProposalRequest,
@@ -444,7 +445,7 @@ def serialize_proposal_list_item(proposal: dict[str, Any]) -> ProposalListItem:
         client_company=proposal.get("client_company"),
         status=PROPOSAL_STATUS_MAP.get(status_id, "Unknown"),
         status_id=status_id,
-        total=str(proposal.get("total", "0.00")),
+        total=format_currency(proposal.get("total")),
         notes=proposal.get("notes"),
         created_at=proposal["created_at"],
         updated_at=proposal["updated_at"],
@@ -461,7 +462,7 @@ def serialize_proposal_item(item: dict[str, Any]) -> ProposalItemResponse:
         id=item["id"],
         name=item["name"],
         description=item.get("description"),
-        price=str(item.get("price", "0.00")),
+        price=format_currency(item.get("price")),
         service_id=item.get("service_id"),
         created_at=item["created_at"],
     )
@@ -479,7 +480,7 @@ def serialize_proposal(proposal: dict[str, Any], items: list[dict[str, Any]]) ->
         client_company=proposal.get("client_company"),
         status=PROPOSAL_STATUS_MAP.get(status_id, "Unknown"),
         status_id=status_id,
-        total=str(proposal.get("total", "0.00")),
+        total=format_currency(proposal.get("total")),
         notes=proposal.get("notes"),
         created_at=proposal["created_at"],
         updated_at=proposal["updated_at"],
@@ -1076,7 +1077,7 @@ async def get_public_proposal(proposal_id: str) -> dict[str, Any]:
         "client_email": proposal.get("client_email"),
         "status": PROPOSAL_STATUS_MAP.get(proposal["status"], "Unknown"),
         "status_id": proposal["status"],
-        "total": str(proposal.get("total", "0.00")),
+        "total": format_currency(proposal.get("total")),
         "notes": proposal.get("notes"),
         "sent_at": proposal.get("sent_at"),
         "signed_at": proposal.get("signed_at"),
@@ -1088,7 +1089,7 @@ async def get_public_proposal(proposal_id: str) -> dict[str, Any]:
                 "id": item["id"],
                 "name": item["name"],
                 "description": item.get("description"),
-                "price": str(item.get("price", "0.00")),
+                "price": format_currency(item.get("price")),
             }
             for item in items
         ],

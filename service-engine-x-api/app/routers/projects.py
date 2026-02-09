@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 
-from app.auth import AuthContext, get_current_org
+from app.auth import AuthContext, get_current_auth
 from app.config import get_settings
 from app.database import get_supabase
 from app.models.projects import (
@@ -88,7 +88,7 @@ def serialize_project(
 @router.get("")
 async def list_projects(
     request: Request,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
     limit: int = Query(20, ge=1, le=100),
     page: int = Query(1, ge=1),
     sort: str = Query("created_at:desc"),
@@ -168,7 +168,7 @@ async def list_projects(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_project(
     body: ProjectCreate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
 ) -> ProjectResponse:
     """Create a new project within an engagement."""
     supabase = get_supabase()
@@ -251,7 +251,7 @@ async def create_project(
 @router.get("/{project_id}")
 async def retrieve_project(
     project_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
 ) -> ProjectResponse:
     """Retrieve a project with its engagement and service info."""
     if not is_valid_uuid(project_id):
@@ -306,7 +306,7 @@ async def retrieve_project(
 async def update_project(
     project_id: str,
     body: ProjectUpdate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
 ) -> ProjectResponse:
     """Update a project."""
     if not is_valid_uuid(project_id):
@@ -410,7 +410,7 @@ async def update_project(
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_project(
     project_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
 ) -> Response:
     """Soft delete a project."""
     if not is_valid_uuid(project_id):
@@ -444,7 +444,7 @@ async def delete_project(
 @router.post("/{project_id}/advance", status_code=status.HTTP_200_OK)
 async def advance_project_phase(
     project_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
 ) -> ProjectResponse:
     """Advance a project to the next phase."""
     if not is_valid_uuid(project_id):

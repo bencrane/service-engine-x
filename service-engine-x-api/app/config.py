@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     service_engine_x_supabase_url: str
     service_engine_x_supabase_service_role_key: str
 
+    # JWT Authentication
+    jwt_secret_key: str = "change-me-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_expiration_hours: int = 72
+
     # API
     api_base_url: str = "http://localhost:8000"
     debug: bool = False

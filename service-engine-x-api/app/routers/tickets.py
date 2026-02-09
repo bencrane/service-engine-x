@@ -8,6 +8,7 @@ from fastapi.responses import Response
 
 from app.auth.dependencies import AuthContext, get_current_org
 from app.database import get_supabase
+from app.utils import format_currency, format_currency_optional
 from app.models.tickets import (
     TICKET_STATUS_MAP,
     VALID_TICKET_STATUSES,
@@ -71,7 +72,7 @@ async def fetch_client(supabase: Any, user_id: str, org_id: str) -> TicketClient
         email=user.get("email"),
         company=user.get("company"),
         phone=user.get("phone"),
-        balance=str(user.get("balance")) if user.get("balance") else None,
+        balance=format_currency_optional(user.get("balance")),
         address=address,
         role=role,
     )
@@ -155,7 +156,7 @@ async def fetch_ticket_order(supabase: Any, order_id: str | None, org_id: str) -
         id=order["id"],
         status=ORDER_STATUS_MAP.get(order["status"], "Unknown"),
         service=order.get("service_name"),
-        price=float(order.get("price", 0)),
+        price=float(format_currency(order.get("price"))),
         quantity=order.get("quantity", 1),
         created_at=order["created_at"],
     )

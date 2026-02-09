@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 
-from app.auth import AuthContext, get_current_org
+from app.auth import AuthContext, get_current_auth
 from app.config import get_settings
 from app.database import get_supabase
 from app.models.engagements import (
@@ -104,7 +104,7 @@ def serialize_engagement(
 @router.get("")
 async def list_engagements(
     request: Request,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
     limit: int = Query(20, ge=1, le=100),
     page: int = Query(1, ge=1),
     sort: str = Query("created_at:desc"),
@@ -181,7 +181,7 @@ async def list_engagements(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_engagement(
     body: EngagementCreate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
 ) -> EngagementResponse:
     """Create a new engagement."""
     supabase = get_supabase()
@@ -254,7 +254,7 @@ async def create_engagement(
 @router.get("/{engagement_id}")
 async def retrieve_engagement(
     engagement_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
 ) -> EngagementResponse:
     """Retrieve an engagement with its projects and conversations."""
     if not is_valid_uuid(engagement_id):
@@ -316,7 +316,7 @@ async def retrieve_engagement(
 async def update_engagement(
     engagement_id: str,
     body: EngagementUpdate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
 ) -> EngagementResponse:
     """Update an engagement."""
     if not is_valid_uuid(engagement_id):
@@ -413,7 +413,7 @@ async def update_engagement(
 @router.delete("/{engagement_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_engagement(
     engagement_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
 ) -> Response:
     """
     Close an engagement (sets status to Closed).

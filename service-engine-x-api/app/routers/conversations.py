@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 
-from app.auth import AuthContext, get_current_org
+from app.auth import AuthContext, get_current_auth
 from app.config import get_settings
 from app.database import get_supabase
 from app.models.conversations import (
@@ -114,7 +114,7 @@ def serialize_conversation(
 async def list_conversations(
     project_id: str,
     request: Request,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
     limit: int = Query(20, ge=1, le=100),
     page: int = Query(1, ge=1),
     sort: str = Query("last_message_at:desc"),
@@ -215,7 +215,7 @@ async def list_conversations(
 async def create_conversation(
     project_id: str,
     body: ConversationCreate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
 ) -> ConversationResponse:
     """Create a new conversation within a project."""
     if not is_valid_uuid(project_id):
@@ -269,7 +269,7 @@ async def create_conversation(
 async def retrieve_conversation(
     project_id: str,
     conversation_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
     include_internal: bool = Query(True, description="Include internal messages"),
 ) -> ConversationResponse:
     """Retrieve a conversation with its messages."""
@@ -350,7 +350,7 @@ async def update_conversation(
     project_id: str,
     conversation_id: str,
     body: ConversationUpdate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
 ) -> ConversationResponse:
     """Update a conversation."""
     if not is_valid_uuid(project_id) or not is_valid_uuid(conversation_id):
@@ -447,7 +447,7 @@ async def update_conversation(
 async def delete_conversation(
     project_id: str,
     conversation_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
 ) -> Response:
     """
     Close a conversation (sets status to Closed).
@@ -491,7 +491,7 @@ async def delete_conversation(
 async def list_messages(
     project_id: str,
     conversation_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
     include_internal: bool = Query(True, description="Include internal messages"),
     limit: int = Query(50, ge=1, le=100),
     page: int = Query(1, ge=1),
@@ -573,7 +573,7 @@ async def create_message(
     project_id: str,
     conversation_id: str,
     body: MessageCreate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
 ) -> MessageResponse:
     """Create a new message in a conversation."""
     if not is_valid_uuid(project_id) or not is_valid_uuid(conversation_id):
@@ -641,7 +641,7 @@ async def delete_message(
     project_id: str,
     conversation_id: str,
     message_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_auth),
 ) -> Response:
     """Soft delete a message."""
     if not is_valid_uuid(project_id) or not is_valid_uuid(conversation_id) or not is_valid_uuid(message_id):
