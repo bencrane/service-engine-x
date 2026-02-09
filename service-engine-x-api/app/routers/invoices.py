@@ -188,7 +188,7 @@ def serialize_invoice_list_item(invoice: dict[str, Any]) -> InvoiceListItem:
 
 async def generate_invoice_number(supabase: Any) -> str:
     """Generate a unique invoice number."""
-    count_result = await supabase.table("invoices").select(
+    count_result = supabase.table("invoices").select(
         "*", count="exact", head=True
     ).execute()
     count = count_result.count or 0
@@ -214,7 +214,7 @@ async def list_invoices(
     ascending = sort_dir == "asc"
 
     # Get count
-    count_result = await supabase.table("invoices").select(
+    count_result = supabase.table("invoices").select(
         "*", count="exact", head=True
     ).eq("org_id", auth.org_id).is_("deleted_at", "null").execute()
 
@@ -306,7 +306,7 @@ async def create_invoice(
     client_id = body.user_id
     if not client_id and body.email:
         # Check if user exists
-        existing_user = await supabase.table("users").select("id").eq(
+        existing_user = supabase.table("users").select("id").eq(
             "email", body.email
         ).eq("org_id", auth.org_id).execute()
 
@@ -315,7 +315,7 @@ async def create_invoice(
         else:
             # Create new client
             user_data = body.user_data or {}
-            new_user_result = await supabase.table("users").insert({
+            new_user_result = supabase.table("users").insert({
                 "org_id": auth.org_id,
                 "email": body.email,
                 "name_f": user_data.get("name_f", ""),
@@ -328,7 +328,7 @@ async def create_invoice(
             client_id = new_user_result.data[0]["id"]
 
     # Validate client exists
-    client_result = await supabase.table("users").select(
+    client_result = supabase.table("users").select(
         "id, name_f, name_l, company, address_id, addresses:address_id (*)"
     ).eq("id", client_id).eq("org_id", auth.org_id).execute()
 
@@ -345,7 +345,7 @@ async def create_invoice(
 
     # Validate coupon if provided
     if body.coupon_id:
-        coupon_result = await supabase.table("coupons").select("id").eq(
+        coupon_result = supabase.table("coupons").select("id").eq(
             "id", body.coupon_id
         ).execute()
 
@@ -428,7 +428,7 @@ async def create_invoice(
         "employee_id": None,
     }
 
-    invoice_result = await supabase.table("invoices").insert(invoice_data).select().execute()
+    invoice_result = supabase.table("invoices").insert(invoice_data).select().execute()
 
     if not invoice_result.data:
         raise HTTPException(status_code=500, detail="Failed to create invoice")
@@ -453,10 +453,10 @@ async def create_invoice(
         for item in body.items
     ]
 
-    items_result = await supabase.table("invoice_items").insert(item_rows).select().execute()
+    items_result = supabase.table("invoice_items").insert(item_rows).select().execute()
 
     # Fetch full invoice with relations
-    full_invoice = await supabase.table("invoices").select(
+    full_invoice = supabase.table("invoices").select(
         "*, users:user_id (id, name_f, name_l, email, company, phone, tax_id, addresses:address_id (*), roles:role_id (*)), invoice_items (*)"
     ).eq("id", invoice["id"]).execute()
 
@@ -474,7 +474,7 @@ async def retrieve_invoice(
     """Retrieve an invoice by ID."""
     supabase = get_supabase()
 
-    result = await supabase.table("invoices").select(
+    result = supabase.table("invoices").select(
         "*, users:user_id (id, name_f, name_l, email, company, phone, tax_id, aff_id, stripe_id, balance, custom_fields, status, addresses:address_id (*), roles:role_id (*)), invoice_items (*)"
     ).eq("id", invoice_id).eq("org_id", auth.org_id).is_("deleted_at", "null").execute()
 
@@ -494,7 +494,7 @@ async def update_invoice(
     supabase = get_supabase()
 
     # Fetch existing invoice
-    existing_result = await supabase.table("invoices").select(
+    existing_result = supabase.table("invoices").select(
         "*, users:user_id (*)"
     ).eq("id", invoice_id).eq("org_id", auth.org_id).is_("deleted_at", "null").execute()
 
@@ -531,7 +531,7 @@ async def update_invoice(
     # Validate user_id if changing
     client_id = existing["user_id"]
     if body.user_id and body.user_id != existing["user_id"]:
-        client_result = await supabase.table("users").select("id").eq(
+        client_result = supabase.table("users").select("id").eq(
             "id", body.user_id
         ).eq("org_id", auth.org_id).execute()
 
@@ -547,7 +547,7 @@ async def update_invoice(
 
     # Validate coupon if provided
     if body.coupon_id:
-        coupon_result = await supabase.table("coupons").select("id").eq(
+        coupon_result = supabase.table("coupons").select("id").eq(
             "id", body.coupon_id
         ).execute()
 
@@ -593,10 +593,10 @@ async def update_invoice(
     if body.note is not None:
         update_data["note"] = body.note
 
-    await supabase.table("invoices").update(update_data).eq("id", invoice_id).execute()
+    supabase.table("invoices").update(update_data).eq("id", invoice_id).execute()
 
     # Full replacement of items - delete old, insert new
-    await supabase.table("invoice_items").delete().eq("invoice_id", invoice_id).execute()
+    supabase.table("invoice_items").delete().eq("invoice_id", invoice_id).execute()
 
     item_rows = [
         {
@@ -615,10 +615,10 @@ async def update_invoice(
         for item in body.items
     ]
 
-    await supabase.table("invoice_items").insert(item_rows).select().execute()
+    supabase.table("invoice_items").insert(item_rows).select().execute()
 
     # Fetch updated invoice
-    updated_result = await supabase.table("invoices").select(
+    updated_result = supabase.table("invoices").select(
         "*, users:user_id (id, name_f, name_l, email, company, phone, tax_id, addresses:address_id (*), roles:role_id (*)), invoice_items (*)"
     ).eq("id", invoice_id).execute()
 
@@ -637,7 +637,7 @@ async def delete_invoice(
     supabase = get_supabase()
 
     # Check if invoice exists
-    existing_result = await supabase.table("invoices").select("id, deleted_at").eq(
+    existing_result = supabase.table("invoices").select("id, deleted_at").eq(
         "id", invoice_id
     ).eq("org_id", auth.org_id).execute()
 
@@ -649,7 +649,7 @@ async def delete_invoice(
 
     # Soft delete
     now = datetime.now(timezone.utc).isoformat()
-    await supabase.table("invoices").update({"deleted_at": now}).eq("id", invoice_id).execute()
+    supabase.table("invoices").update({"deleted_at": now}).eq("id", invoice_id).execute()
 
     return Response(status_code=204)
 
@@ -665,7 +665,7 @@ async def charge_invoice(
     supabase = get_supabase()
 
     # Fetch invoice
-    result = await supabase.table("invoices").select(
+    result = supabase.table("invoices").select(
         "*, users:user_id (*), invoice_items (*)"
     ).eq("id", invoice_id).eq("org_id", auth.org_id).is_("deleted_at", "null").execute()
 
@@ -703,7 +703,7 @@ async def charge_invoice(
     client_ip = request.client.host if request.client else None
 
     # Update invoice as paid
-    await supabase.table("invoices").update({
+    supabase.table("invoices").update({
         "status": 3,
         "date_paid": now.isoformat(),
         "transaction_id": transaction_id,
@@ -716,7 +716,7 @@ async def charge_invoice(
     items = invoice.get("invoice_items") or []
     for item in items:
         if item.get("service_id"):
-            order_result = await supabase.table("orders").insert({
+            order_result = supabase.table("orders").insert({
                 "org_id": auth.org_id,
                 "user_id": invoice["user_id"],
                 "service_id": item["service_id"],
@@ -729,12 +729,12 @@ async def charge_invoice(
 
             if order_result.data:
                 # Link item to order
-                await supabase.table("invoice_items").update({
+                supabase.table("invoice_items").update({
                     "order_id": order_result.data[0]["id"]
                 }).eq("id", item["id"]).execute()
 
     # Fetch updated invoice
-    updated_result = await supabase.table("invoices").select(
+    updated_result = supabase.table("invoices").select(
         "*, users:user_id (id, name_f, name_l, email, company, phone, tax_id, addresses:address_id (*), roles:role_id (*)), invoice_items (*)"
     ).eq("id", invoice_id).execute()
 
@@ -753,7 +753,7 @@ async def mark_invoice_paid(
     supabase = get_supabase()
 
     # Fetch invoice
-    result = await supabase.table("invoices").select(
+    result = supabase.table("invoices").select(
         "*, users:user_id (*), invoice_items (*)"
     ).eq("id", invoice_id).eq("org_id", auth.org_id).is_("deleted_at", "null").execute()
 
@@ -764,7 +764,7 @@ async def mark_invoice_paid(
 
     # Idempotent: if already paid, return current state
     if invoice["status"] == 3:
-        full_result = await supabase.table("invoices").select(
+        full_result = supabase.table("invoices").select(
             "*, users:user_id (id, name_f, name_l, email, company, phone, tax_id, addresses:address_id (*), roles:role_id (*)), invoice_items (*)"
         ).eq("id", invoice_id).execute()
         return serialize_invoice(full_result.data[0])
@@ -784,7 +784,7 @@ async def mark_invoice_paid(
     now = datetime.now(timezone.utc)
 
     # Update invoice as paid (manual)
-    await supabase.table("invoices").update({
+    supabase.table("invoices").update({
         "status": 3,
         "date_paid": now.isoformat(),
         "paysys": "Manual",
@@ -795,7 +795,7 @@ async def mark_invoice_paid(
     items = invoice.get("invoice_items") or []
     for item in items:
         if item.get("service_id"):
-            order_result = await supabase.table("orders").insert({
+            order_result = supabase.table("orders").insert({
                 "org_id": auth.org_id,
                 "user_id": invoice["user_id"],
                 "service_id": item["service_id"],
@@ -807,14 +807,14 @@ async def mark_invoice_paid(
             }).select("id").execute()
 
             if order_result.data:
-                await supabase.table("invoice_items").update({
+                supabase.table("invoice_items").update({
                     "order_id": order_result.data[0]["id"]
                 }).eq("id", item["id"]).execute()
 
     # Create subscription if recurring
     recurring = invoice.get("recurring")
     if recurring:
-        await supabase.table("subscriptions").insert({
+        supabase.table("subscriptions").insert({
             "org_id": auth.org_id,
             "user_id": invoice["user_id"],
             "invoice_id": invoice["id"],
@@ -824,7 +824,7 @@ async def mark_invoice_paid(
         }).execute()
 
     # Fetch updated invoice
-    updated_result = await supabase.table("invoices").select(
+    updated_result = supabase.table("invoices").select(
         "*, users:user_id (id, name_f, name_l, email, company, phone, tax_id, addresses:address_id (*), roles:role_id (*)), invoice_items (*)"
     ).eq("id", invoice_id).execute()
 

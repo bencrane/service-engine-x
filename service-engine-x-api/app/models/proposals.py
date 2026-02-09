@@ -60,6 +60,7 @@ class ProposalResponse(BaseModel):
     updated_at: str
     sent_at: str | None
     signed_at: str | None
+    pdf_url: str | None = None
     converted_order_id: str | None
     converted_engagement_id: str | None = None
     items: list[ProposalItemResponse] = []
@@ -82,6 +83,7 @@ class ProposalListItem(BaseModel):
     updated_at: str
     sent_at: str | None
     signed_at: str | None
+    pdf_url: str | None = None
     converted_order_id: str | None
     converted_engagement_id: str | None = None
 

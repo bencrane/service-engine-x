@@ -38,7 +38,7 @@ ORDER_STATUS_MAP: dict[int, str] = {
 
 async def fetch_client(supabase: Any, user_id: str, org_id: str) -> TicketClientResponse | None:
     """Fetch client with address and role."""
-    result = await supabase.table("users").select(
+    result = supabase.table("users").select(
         "id, name_f, name_l, email, company, phone, balance, addresses:address_id (*), roles:role_id (*)"
     ).eq("id", user_id).eq("org_id", org_id).execute()
 
@@ -80,7 +80,7 @@ async def fetch_client(supabase: Any, user_id: str, org_id: str) -> TicketClient
 
 async def fetch_ticket_employees(supabase: Any, ticket_id: str) -> list[TicketEmployeeResponse]:
     """Fetch employees assigned to a ticket."""
-    assignments_result = await supabase.table("ticket_employees").select(
+    assignments_result = supabase.table("ticket_employees").select(
         "employee_id"
     ).eq("ticket_id", ticket_id).execute()
 
@@ -89,7 +89,7 @@ async def fetch_ticket_employees(supabase: Any, ticket_id: str) -> list[TicketEm
 
     employee_ids = [a["employee_id"] for a in assignments_result.data]
 
-    employees_result = await supabase.table("users").select(
+    employees_result = supabase.table("users").select(
         "id, name_f, name_l, role_id"
     ).in_("id", employee_ids).execute()
 
@@ -106,7 +106,7 @@ async def fetch_ticket_employees(supabase: Any, ticket_id: str) -> list[TicketEm
 
 async def fetch_ticket_tags(supabase: Any, ticket_id: str) -> list[str]:
     """Fetch tags for a ticket."""
-    tag_links_result = await supabase.table("ticket_tags").select(
+    tag_links_result = supabase.table("ticket_tags").select(
         "tag_id"
     ).eq("ticket_id", ticket_id).execute()
 
@@ -115,14 +115,14 @@ async def fetch_ticket_tags(supabase: Any, ticket_id: str) -> list[str]:
 
     tag_ids = [t["tag_id"] for t in tag_links_result.data]
 
-    tags_result = await supabase.table("tags").select("name").in_("id", tag_ids).execute()
+    tags_result = supabase.table("tags").select("name").in_("id", tag_ids).execute()
 
     return [t["name"] for t in (tags_result.data or [])]
 
 
 async def fetch_ticket_messages(supabase: Any, ticket_id: str) -> list[TicketMessageResponse]:
     """Fetch messages for a ticket."""
-    result = await supabase.table("ticket_messages").select(
+    result = supabase.table("ticket_messages").select(
         "id, user_id, message, staff_only, files, created_at"
     ).eq("ticket_id", ticket_id).order("created_at", desc=False).execute()
 
@@ -144,7 +144,7 @@ async def fetch_ticket_order(supabase: Any, order_id: str | None, org_id: str) -
     if not order_id:
         return None
 
-    result = await supabase.table("orders").select(
+    result = supabase.table("orders").select(
         "id, status, service_name, price, quantity, created_at"
     ).eq("id", order_id).eq("org_id", org_id).is_("deleted_at", "null").execute()
 
@@ -229,7 +229,7 @@ async def serialize_ticket_full(
 async def validate_employees(supabase: Any, employee_ids: list[str], org_id: str) -> str | None:
     """Validate employee IDs. Returns error message if invalid."""
     for emp_id in employee_ids:
-        result = await supabase.table("users").select(
+        result = supabase.table("users").select(
             "id, roles:role_id (dashboard_access)"
         ).eq("id", emp_id).eq("org_id", org_id).execute()
 
@@ -257,20 +257,20 @@ async def assign_tags(supabase: Any, ticket_id: str, tag_names: list[str]) -> No
     """Assign tags to a ticket (find-or-create)."""
     for tag_name in tag_names:
         # Find existing tag
-        tag_result = await supabase.table("tags").select("id").eq("name", tag_name).execute()
+        tag_result = supabase.table("tags").select("id").eq("name", tag_name).execute()
 
         if tag_result.data:
             tag_id = tag_result.data[0]["id"]
         else:
             # Create new tag
-            new_tag_result = await supabase.table("tags").insert({"name": tag_name}).select("id").execute()
+            new_tag_result = supabase.table("tags").insert({"name": tag_name}).select("id").execute()
             if new_tag_result.data:
                 tag_id = new_tag_result.data[0]["id"]
             else:
                 continue
 
         # Link tag to ticket
-        await supabase.table("ticket_tags").insert({
+        supabase.table("ticket_tags").insert({
             "ticket_id": ticket_id,
             "tag_id": tag_id,
         }).execute()
@@ -299,7 +299,7 @@ async def list_tickets(
     ascending = sort_dir == "asc"
 
     # Get count
-    count_result = await supabase.table("tickets").select(
+    count_result = supabase.table("tickets").select(
         "*", count="exact", head=True
     ).eq("org_id", auth.org_id).is_("deleted_at", "null").execute()
 
@@ -377,7 +377,7 @@ async def create_ticket(
     supabase = get_supabase()
 
     # Validate client exists in org
-    client_result = await supabase.table("users").select("id").eq(
+    client_result = supabase.table("users").select("id").eq(
         "id", body.user_id
     ).eq("org_id", auth.org_id).execute()
 
@@ -402,7 +402,7 @@ async def create_ticket(
 
     # Validate order_id if provided
     if body.order_id:
-        order_result = await supabase.table("orders").select("id").eq(
+        order_result = supabase.table("orders").select("id").eq(
             "id", body.order_id
         ).eq("org_id", auth.org_id).is_("deleted_at", "null").execute()
 
@@ -440,7 +440,7 @@ async def create_ticket(
         "source": "API",
     }
 
-    ticket_result = await supabase.table("tickets").insert(ticket_data).select().execute()
+    ticket_result = supabase.table("tickets").insert(ticket_data).select().execute()
 
     if not ticket_result.data:
         raise HTTPException(status_code=500, detail="Failed to create ticket")
@@ -453,7 +453,7 @@ async def create_ticket(
             {"ticket_id": ticket["id"], "employee_id": emp_id}
             for emp_id in body.employees
         ]
-        await supabase.table("ticket_employees").insert(employee_rows).execute()
+        supabase.table("ticket_employees").insert(employee_rows).execute()
 
     # Assign tags
     if body.tags:
@@ -470,7 +470,7 @@ async def retrieve_ticket(
     """Retrieve a ticket by ID."""
     supabase = get_supabase()
 
-    result = await supabase.table("tickets").select("*").eq(
+    result = supabase.table("tickets").select("*").eq(
         "id", ticket_id
     ).eq("org_id", auth.org_id).is_("deleted_at", "null").execute()
 
@@ -490,7 +490,7 @@ async def update_ticket(
     supabase = get_supabase()
 
     # Check ticket exists
-    existing_result = await supabase.table("tickets").select("*").eq(
+    existing_result = supabase.table("tickets").select("*").eq(
         "id", ticket_id
     ).eq("org_id", auth.org_id).is_("deleted_at", "null").execute()
 
@@ -511,7 +511,7 @@ async def update_ticket(
 
     # Validate order_id if provided
     if body.order_id is not None and body.order_id != "":
-        order_result = await supabase.table("orders").select("id").eq(
+        order_result = supabase.table("orders").select("id").eq(
             "id", body.order_id
         ).eq("org_id", auth.org_id).is_("deleted_at", "null").execute()
 
@@ -561,28 +561,28 @@ async def update_ticket(
             update_data["date_closed"] = None
 
     # Update ticket
-    await supabase.table("tickets").update(update_data).eq("id", ticket_id).execute()
+    supabase.table("tickets").update(update_data).eq("id", ticket_id).execute()
 
     # Replace employees if provided
     if body.employees is not None:
-        await supabase.table("ticket_employees").delete().eq("ticket_id", ticket_id).execute()
+        supabase.table("ticket_employees").delete().eq("ticket_id", ticket_id).execute()
 
         if body.employees:
             employee_rows = [
                 {"ticket_id": ticket_id, "employee_id": emp_id}
                 for emp_id in body.employees
             ]
-            await supabase.table("ticket_employees").insert(employee_rows).execute()
+            supabase.table("ticket_employees").insert(employee_rows).execute()
 
     # Replace tags if provided
     if body.tags is not None:
-        await supabase.table("ticket_tags").delete().eq("ticket_id", ticket_id).execute()
+        supabase.table("ticket_tags").delete().eq("ticket_id", ticket_id).execute()
 
         if body.tags:
             await assign_tags(supabase, ticket_id, body.tags)
 
     # Fetch updated ticket
-    updated_result = await supabase.table("tickets").select("*").eq("id", ticket_id).execute()
+    updated_result = supabase.table("tickets").select("*").eq("id", ticket_id).execute()
 
     if not updated_result.data:
         raise HTTPException(status_code=500, detail="Failed to fetch updated ticket")
@@ -599,7 +599,7 @@ async def delete_ticket(
     supabase = get_supabase()
 
     # Check ticket exists
-    existing_result = await supabase.table("tickets").select("id").eq(
+    existing_result = supabase.table("tickets").select("id").eq(
         "id", ticket_id
     ).eq("org_id", auth.org_id).is_("deleted_at", "null").execute()
 
@@ -608,7 +608,7 @@ async def delete_ticket(
 
     # Soft delete
     now = datetime.now(timezone.utc).isoformat()
-    await supabase.table("tickets").update({
+    supabase.table("tickets").update({
         "deleted_at": now,
         "updated_at": now,
     }).eq("id", ticket_id).execute()
