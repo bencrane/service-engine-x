@@ -8439,6 +8439,17 @@
                         ],
                         "title": "Signed At"
                     },
+                    "pdf_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pdf Url"
+                    },
                     "converted_order_id": {
                         "anyOf": [
                             {
@@ -8719,6 +8730,17 @@
                             }
                         ],
                         "title": "Signed At"
+                    },
+                    "pdf_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pdf Url"
                     },
                     "converted_order_id": {
                         "anyOf": [
