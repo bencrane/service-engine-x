@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     app_name: str = "Service Engine X API"
     app_version: str = "1.0.0"
 
+    # Internal API (for admin panels)
+    internal_api_key: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

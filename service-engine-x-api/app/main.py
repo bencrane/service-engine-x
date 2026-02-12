@@ -23,6 +23,8 @@ from app.routers import (
     engagements_router,
     projects_router,
     conversations_router,
+    internal_router,
+    systems_router,
 )
 
 settings = get_settings()
@@ -71,6 +73,9 @@ ALLOWED_ORIGINS = [
     "https://outboundsolutions.com",
     "https://modernfull.com",
     "https://client.modernfull.com",
+    "https://ea.systems",
+    "https://my.ea.systems",
+    "https://admin.opsinternal.com",
     # Production — API
     "https://api.serviceengine.xyz",
 ]
@@ -136,6 +141,8 @@ app.include_router(tickets_router)
 app.include_router(engagements_router)
 app.include_router(projects_router)
 app.include_router(conversations_router)
+app.include_router(internal_router)  # Internal admin API
+app.include_router(systems_router)  # Systems (Everything Automation)
 
 
 def custom_openapi() -> dict:
