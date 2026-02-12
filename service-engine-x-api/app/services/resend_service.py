@@ -3,8 +3,6 @@
 import os
 from typing import Any
 
-import resend
-
 
 def send_proposal_signed_email(
     to_emails: list[str],
@@ -22,6 +20,11 @@ def send_proposal_signed_email(
     """
     api_key = os.environ.get("RESEND_API_KEY")
     if not api_key:
+        return None
+
+    try:
+        import resend
+    except ImportError:
         return None
 
     resend.api_key = api_key
