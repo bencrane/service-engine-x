@@ -227,3 +227,69 @@ async def public_list_systems(org_slug: str) -> list[PublicSystemResponse]:
     )
 
     return [PublicSystemResponse(**sys) for sys in result.data]
+
+
+class SimpleLoginRequest(BaseModel):
+    """Simple login request."""
+
+    email: str
+    password: str
+
+
+class UserSystemsResponse(BaseModel):
+    """User with their purchased systems."""
+
+    user_id: str
+    email: str
+    name: str
+    systems: list[PublicSystemResponse]
+
+
+@public_router.post("/login")
+async def simple_login(body: SimpleLoginRequest) -> UserSystemsResponse:
+    """Simple login - returns user's purchased systems."""
+    supabase = get_supabase()
+
+    # Find user by email and password (simple plaintext check)
+    user_result = (
+        supabase.table("users")
+        .select("id, email, name_f, name_l, password_hash")
+        .eq("email", body.email.lower().strip())
+        .execute()
+    )
+
+    if not user_result.data:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    user = user_result.data[0]
+
+    # Simple password check (plaintext for testing)
+    if user["password_hash"] != body.password:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    # Get user's systems via system_access
+    access_result = (
+        supabase.table("system_access")
+        .select("system_id, systems(id, name, slug, description)")
+        .eq("client_id", user["id"])
+        .eq("status", 1)  # active only
+        .execute()
+    )
+
+    systems = []
+    for access in access_result.data:
+        if access.get("systems"):
+            sys = access["systems"]
+            systems.append(PublicSystemResponse(
+                id=sys["id"],
+                name=sys["name"],
+                slug=sys["slug"],
+                description=sys.get("description"),
+            ))
+
+    return UserSystemsResponse(
+        user_id=user["id"],
+        email=user["email"],
+        name=f"{user['name_f']} {user['name_l']}".strip(),
+        systems=systems,
+    )
