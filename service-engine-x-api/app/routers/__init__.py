@@ -16,6 +16,7 @@ from app.routers.engagements import router as engagements_router
 from app.routers.projects import router as projects_router
 from app.routers.conversations import router as conversations_router
 from app.routers.internal import router as internal_router
+from app.routers.internal import public_router as public_systems_router
 from app.routers.systems import router as systems_router
 
 __all__ = [
@@ -36,4 +37,5 @@ __all__ = [
     "conversations_router",
     "internal_router",
     "systems_router",
+    "public_systems_router",
 ]

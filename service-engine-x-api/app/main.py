@@ -25,6 +25,7 @@ from app.routers import (
     conversations_router,
     internal_router,
     systems_router,
+    public_systems_router,
 )
 
 settings = get_settings()
@@ -143,6 +144,7 @@ app.include_router(projects_router)
 app.include_router(conversations_router)
 app.include_router(internal_router)  # Internal admin API
 app.include_router(systems_router)  # Systems (Everything Automation)
+app.include_router(public_systems_router)  # Public systems listing
 
 
 def custom_openapi() -> dict:

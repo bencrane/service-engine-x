@@ -9,6 +9,7 @@ from app.config import get_settings
 from app.database import get_supabase
 
 router = APIRouter(prefix="/internal", tags=["Internal"])
+public_router = APIRouter(prefix="/public", tags=["Public"])
 
 
 async def verify_internal_key(x_internal_key: str = Header(...)) -> None:
@@ -192,3 +193,37 @@ async def create_system(body: InternalSystemCreate) -> SystemResponse:
         )
 
     return SystemResponse(**result.data[0])
+
+
+# ============== Public Endpoints (no auth) ==============
+
+class PublicSystemResponse(BaseModel):
+    """Public system response (limited fields)."""
+
+    id: str
+    name: str
+    slug: str | None
+    description: str | None
+
+
+@public_router.get("/orgs/{org_slug}/systems")
+async def public_list_systems(org_slug: str) -> list[PublicSystemResponse]:
+    """List systems for an organization by slug (public, no auth)."""
+    supabase = get_supabase()
+
+    # Find org by slug
+    org_result = supabase.table("organizations").select("id").eq("slug", org_slug).execute()
+    if not org_result.data:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    org_id = org_result.data[0]["id"]
+
+    result = (
+        supabase.table("systems")
+        .select("id, name, slug, description")
+        .eq("org_id", org_id)
+        .is_("deleted_at", "null")
+        .execute()
+    )
+
+    return [PublicSystemResponse(**sys) for sys in result.data]
