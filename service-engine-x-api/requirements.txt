@@ -11,6 +11,12 @@ supabase>=2.3.0
 passlib[bcrypt]>=1.7.4
 PyJWT>=2.8.0
 
+# Payments
+stripe>=7.0.0
+
+# Email
+resend>=0.7.0
+
 # Utilities
 python-multipart>=0.0.9
 python-dotenv>=1.0.0

@@ -15,6 +15,12 @@ from app.auth.dependencies import AuthContext, get_current_org
 from app.database import get_supabase
 from app.utils import format_currency
 from app.utils.storage import upload_proposal_pdf
+from app.services.stripe_service import (
+    build_line_items_from_proposal,
+    create_checkout_session,
+    verify_webhook_signature,
+)
+from app.services.resend_service import send_proposal_signed_email
 from app.models.proposals import (
     PROPOSAL_STATUS_MAP,
     CreateProposalRequest,
@@ -1185,6 +1191,7 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
 
     signature_data = body.get("signature")
     signer_name = body.get("signer_name")
+    signer_email = body.get("signer_email")
     signed_html = body.get("signed_html")
 
     if not signature_data:
@@ -1346,6 +1353,56 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
     order = order_result.data[0]
 
     # =========================================================================
+    # CREATE STRIPE CHECKOUT SESSION
+    # =========================================================================
+    checkout_url: str | None = None
+
+    # Fetch org's Stripe config
+    org_result = supabase.table("organizations").select(
+        "stripe_secret_key, domain"
+    ).eq("id", org_id).execute()
+
+    if org_result.data:
+        org_data = org_result.data[0]
+        stripe_key = org_data.get("stripe_secret_key")
+        org_domain = org_data.get("domain")
+
+        if stripe_key and org_domain:
+            try:
+                # Build line items from proposal items
+                stripe_line_items = build_line_items_from_proposal(items)
+
+                # Create checkout session
+                success_url = f"https://{org_domain}?payment=success&order_id={order['id']}"
+                cancel_url = f"https://{org_domain}?payment=cancelled&proposal_id={full_proposal_id}"
+
+                checkout_result = create_checkout_session(
+                    api_key=stripe_key,
+                    line_items=stripe_line_items,
+                    success_url=success_url,
+                    cancel_url=cancel_url,
+                    metadata={
+                        "org_id": org_id,
+                        "proposal_id": full_proposal_id,
+                        "order_id": order["id"],
+                        "engagement_id": engagement["id"],
+                    },
+                    customer_email=proposal.get("client_email"),
+                )
+
+                checkout_url = checkout_result["checkout_url"]
+                session_id = checkout_result["session_id"]
+
+                # Update order with Stripe session ID
+                supabase.table("orders").update({
+                    "stripe_checkout_session_id": session_id,
+                }).eq("id", order["id"]).execute()
+
+            except Exception:
+                # Stripe failure is non-blocking — signing still succeeds
+                pass
+
+    # =========================================================================
     # UPDATE PROPOSAL — mark as signed with signature proof
     # =========================================================================
 
@@ -1362,7 +1419,8 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
             # PDF generation is non-blocking — signing still succeeds
             pass
 
-    supabase.table("proposals").update({
+    # Update client_email if signer provided their email
+    update_data = {
         "status": 2,
         "signed_at": now,
         "updated_at": now,
@@ -1372,7 +1430,40 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
         "signed_pdf_url": signed_pdf_url,
         "converted_order_id": order["id"],
         "converted_engagement_id": engagement["id"],
-    }).eq("id", full_proposal_id).execute()
+    }
+    if signer_email:
+        update_data["client_email"] = signer_email
+
+    supabase.table("proposals").update(update_data).eq("id", full_proposal_id).execute()
+
+    # =========================================================================
+    # SEND EMAIL NOTIFICATIONS
+    # =========================================================================
+    # Get org notification config
+    org_notify_result = supabase.table("organizations").select(
+        "notification_email, domain"
+    ).eq("id", org_id).execute()
+
+    if org_notify_result.data:
+        org_notify = org_notify_result.data[0]
+        org_domain = org_notify.get("domain")
+        notify_email = org_notify.get("notification_email")
+
+        if org_domain and notify_email:
+            from_email = f"billing@{org_domain}"
+            to_emails = [notify_email]
+            if signer_email:
+                to_emails.append(signer_email)
+
+            send_proposal_signed_email(
+                to_emails=to_emails,
+                from_email=from_email,
+                signer_name=signer_name or client_name,
+                company_name=proposal.get("client_company"),
+                total=format_currency(proposal.get("total")),
+                signed_pdf_url=signed_pdf_url,
+                proposal_id=full_proposal_id,
+            )
 
     return {
         "success": True,
@@ -1380,6 +1471,7 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
         "proposal_id": full_proposal_id,
         "engagement_id": engagement["id"],
         "order_id": order["id"],
+        "checkout_url": checkout_url,
         "signed_pdf_url": signed_pdf_url,
         "projects": [{"id": p["id"], "name": p["name"]} for p in projects_created],
     }
@@ -1546,4 +1638,81 @@ async def documenso_webhook(request: Request) -> dict[str, str]:
         "proposal_id": proposal["id"],
         "engagement_id": engagement["id"],
         "order_id": order["id"] if order else None,
+    }
+
+
+@webhook_router.post("/stripe")
+async def stripe_webhook(request: Request) -> dict[str, str]:
+    """
+    Handle Stripe webhook events.
+
+    Processes checkout.session.completed events to:
+    - Update order status to In Progress (paid)
+    - Store payment_intent_id and paid_at timestamp
+    """
+    supabase = get_supabase()
+
+    # Get raw body for signature verification
+    try:
+        payload = await request.body()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid request body")
+
+    signature = request.headers.get("stripe-signature")
+    if not signature:
+        raise HTTPException(status_code=400, detail="Missing Stripe signature")
+
+    # Parse payload to get metadata
+    try:
+        event_data = json.loads(payload)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    event_type = event_data.get("type")
+
+    # Only process checkout.session.completed events
+    if event_type != "checkout.session.completed":
+        return {"status": "ignored", "event": event_type or "unknown"}
+
+    session = event_data.get("data", {}).get("object", {})
+    metadata = session.get("metadata", {})
+
+    org_id = metadata.get("org_id")
+    order_id = metadata.get("order_id")
+
+    if not org_id or not order_id:
+        return {"status": "ignored", "reason": "missing_metadata"}
+
+    # Fetch org's webhook secret for verification (if configured)
+    org_result = supabase.table("organizations").select(
+        "stripe_webhook_secret"
+    ).eq("id", org_id).execute()
+
+    if org_result.data:
+        webhook_secret = org_result.data[0].get("stripe_webhook_secret")
+        if webhook_secret:
+            # Verify signature
+            verified_event = verify_webhook_signature(payload, signature, webhook_secret)
+            if verified_event is None:
+                raise HTTPException(status_code=400, detail="Invalid signature")
+
+    # Get payment intent ID
+    payment_intent_id = session.get("payment_intent")
+
+    # Update order
+    now = datetime.now(timezone.utc).isoformat()
+
+    update_result = supabase.table("orders").update({
+        "status": 1,  # In Progress (paid)
+        "paid_at": now,
+        "stripe_payment_intent_id": payment_intent_id,
+    }).eq("id", order_id).eq("org_id", org_id).execute()
+
+    if not update_result.data:
+        return {"status": "error", "reason": "order_not_found"}
+
+    return {
+        "status": "success",
+        "order_id": order_id,
+        "payment_intent_id": payment_intent_id or "",
     }

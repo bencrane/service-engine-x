@@ -69,6 +69,8 @@ ALLOWED_ORIGINS = [
     "https://revenueactivation.com",
     "https://client.outboundsolutions.com",
     "https://outboundsolutions.com",
+    "https://modernfull.com",
+    "https://client.modernfull.com",
     # Production — API
     "https://api.serviceengine.xyz",
 ]
