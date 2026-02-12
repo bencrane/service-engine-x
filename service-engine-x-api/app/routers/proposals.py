@@ -1415,9 +1415,11 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
             signed_pdf_url = upload_proposal_pdf(
                 org_id, f"{full_proposal_id}-signed", pdf_bytes
             )
-        except Exception:
+        except Exception as e:
             # PDF generation is non-blocking — signing still succeeds
-            pass
+            # Log the error for debugging
+            import logging
+            logging.error(f"PDF generation failed for proposal {full_proposal_id}: {e}")
 
     # Update client_email if signer provided their email
     update_data = {
