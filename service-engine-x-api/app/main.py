@@ -26,6 +26,8 @@ from app.routers import (
     internal_router,
     systems_router,
     public_systems_router,
+    accounts_router,
+    contacts_router,
 )
 
 settings = get_settings()
@@ -145,6 +147,8 @@ app.include_router(conversations_router)
 app.include_router(internal_router)  # Internal admin API
 app.include_router(systems_router)  # Systems (Everything Automation)
 app.include_router(public_systems_router)  # Public systems listing
+app.include_router(accounts_router)  # Accounts (CRM companies)
+app.include_router(contacts_router)  # Contacts (people at accounts)
 
 
 def custom_openapi() -> dict:
@@ -235,6 +239,8 @@ async def api_index() -> dict:
             "engagements": "/api/engagements",
             "projects": "/api/projects",
             "conversations": "/api/conversations",
+            "accounts": "/api/accounts",
+            "contacts": "/api/contacts",
             "openapi": "/api/openapi.json",
         },
     }

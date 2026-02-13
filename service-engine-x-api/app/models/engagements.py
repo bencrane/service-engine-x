@@ -18,10 +18,19 @@ ENGAGEMENT_STATUS_MAP = {
 }
 
 
+class AccountSummary(BaseModel):
+    """Minimal account info for engagement responses."""
+
+    id: str
+    name: str
+    lifecycle: str
+
+
 class EngagementCreate(BaseModel):
     """Schema for creating an engagement."""
 
-    client_id: str = Field(..., description="UUID of the client")
+    client_id: str | None = Field(None, description="UUID of the client (legacy)")
+    account_id: str | None = Field(None, description="UUID of the account")
     name: str | None = Field(None, description="Optional display name")
     proposal_id: str | None = Field(None, description="Originating proposal UUID")
 
@@ -67,8 +76,10 @@ class EngagementResponse(BaseModel):
 
     id: str
     org_id: str
-    client_id: str
+    client_id: str | None
     client: ClientSummary | None = None
+    account_id: str | None = None
+    account: AccountSummary | None = None
 
     name: str | None
     status: str
@@ -90,8 +101,10 @@ class EngagementListResponse(BaseModel):
 
     id: str
     org_id: str
-    client_id: str
+    client_id: str | None
     client: ClientSummary | None = None
+    account_id: str | None = None
+    account: AccountSummary | None = None
 
     name: str | None
     status: str

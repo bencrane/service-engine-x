@@ -85,6 +85,7 @@ from app.models.tickets import (
 )
 from app.models.engagements import (
     ENGAGEMENT_STATUS_MAP,
+    AccountSummary as EngagementAccountSummary,
     EngagementCreate,
     EngagementUpdate,
     EngagementResponse,
@@ -115,6 +116,29 @@ from app.models.conversations import (
     MessageResponse,
     SenderSummary,
     ProjectBrief,
+)
+from app.models.accounts import (
+    VALID_LIFECYCLES,
+    ACCOUNT_LIFECYCLE_LEAD,
+    ACCOUNT_LIFECYCLE_ACTIVE,
+    ACCOUNT_LIFECYCLE_INACTIVE,
+    ACCOUNT_LIFECYCLE_CHURNED,
+    AccountCreate,
+    AccountUpdate,
+    AccountResponse,
+    AccountListResponse,
+    AccountWithContacts,
+    AddressBrief,
+    ContactBrief,
+)
+from app.models.contacts import (
+    AccountBrief,
+    UserBrief,
+    ContactCreate,
+    ContactUpdate,
+    ContactResponse,
+    ContactListResponse,
+    GrantPortalAccessRequest,
 )
 
 __all__ = [
@@ -188,6 +212,7 @@ __all__ = [
     "EngagementUpdate",
     "EngagementResponse",
     "EngagementListResponse",
+    "EngagementAccountSummary",
     "ClientSummary",
     "ProjectSummary",
     "ConversationSummary",
@@ -210,4 +235,25 @@ __all__ = [
     "MessageResponse",
     "SenderSummary",
     "ProjectBrief",
+    # Accounts
+    "VALID_LIFECYCLES",
+    "ACCOUNT_LIFECYCLE_LEAD",
+    "ACCOUNT_LIFECYCLE_ACTIVE",
+    "ACCOUNT_LIFECYCLE_INACTIVE",
+    "ACCOUNT_LIFECYCLE_CHURNED",
+    "AccountCreate",
+    "AccountUpdate",
+    "AccountResponse",
+    "AccountListResponse",
+    "AccountWithContacts",
+    "AddressBrief",
+    "ContactBrief",
+    # Contacts
+    "AccountBrief",
+    "UserBrief",
+    "ContactCreate",
+    "ContactUpdate",
+    "ContactResponse",
+    "ContactListResponse",
+    "GrantPortalAccessRequest",
 ]

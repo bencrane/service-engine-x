@@ -10,6 +10,7 @@ from app.auth import AuthContext, get_current_auth
 from app.config import get_settings
 from app.database import get_supabase
 from app.models.engagements import (
+    AccountSummary,
     ClientSummary,
     ConversationSummary,
     EngagementCreate,
@@ -42,6 +43,17 @@ def serialize_client(client: dict[str, Any] | None) -> ClientSummary | None:
     )
 
 
+def serialize_account(account: dict[str, Any] | None) -> AccountSummary | None:
+    """Serialize account data to summary model."""
+    if not account:
+        return None
+    return AccountSummary(
+        id=account["id"],
+        name=account["name"],
+        lifecycle=account.get("lifecycle", "lead"),
+    )
+
+
 def serialize_project_summary(project: dict[str, Any]) -> ProjectSummary:
     """Serialize project to summary model."""
     status_id = project.get("status", 1)
@@ -71,6 +83,7 @@ def serialize_conversation_summary(conv: dict[str, Any]) -> ConversationSummary:
 def serialize_engagement(
     engagement: dict[str, Any],
     client: dict[str, Any] | None = None,
+    account: dict[str, Any] | None = None,
     projects: list[dict[str, Any]] | None = None,
     conversations: list[dict[str, Any]] | None = None,
     include_nested: bool = False,
@@ -81,8 +94,10 @@ def serialize_engagement(
     base = {
         "id": engagement["id"],
         "org_id": engagement["org_id"],
-        "client_id": engagement["client_id"],
+        "client_id": engagement.get("client_id"),
         "client": serialize_client(client),
+        "account_id": engagement.get("account_id"),
+        "account": serialize_account(account),
         "name": engagement.get("name"),
         "status": ENGAGEMENT_STATUS_MAP.get(status_id, "Unknown"),
         "status_id": status_id,
@@ -110,6 +125,7 @@ async def list_engagements(
     sort: str = Query("created_at:desc"),
     status: int | None = Query(None, ge=1, le=3, description="Filter by status"),
     client_id: str | None = Query(None, description="Filter by client UUID"),
+    account_id: str | None = Query(None, description="Filter by account UUID"),
 ) -> dict[str, Any]:
     """List all engagements for the authenticated organization."""
     supabase = get_supabase()
@@ -125,10 +141,10 @@ async def list_engagements(
         sort_field = "created_at"
     ascending = sort_dir == "asc"
 
-    # Build query with client join
+    # Build query with client and account joins
     query = (
         supabase.table("engagements")
-        .select("*, client:users!client_id(id, name_f, name_l, email)", count="exact")
+        .select("*, client:users!client_id(id, name_f, name_l, email), account:accounts(id, name, lifecycle)", count="exact")
         .eq("org_id", auth.org_id)
     )
 
@@ -142,6 +158,13 @@ async def list_engagements(
                 content={"message": "Invalid client_id format"},
             )
         query = query.eq("client_id", client_id)
+    if account_id is not None:
+        if not is_valid_uuid(account_id):
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"message": "Invalid account_id format"},
+            )
+        query = query.eq("account_id", account_id)
 
     # Get total count
     query = query.order(sort_field, desc=not ascending)
@@ -152,13 +175,15 @@ async def list_engagements(
     offset = (page - 1) * limit
     query = (
         supabase.table("engagements")
-        .select("*, client:users!client_id(id, name_f, name_l, email)")
+        .select("*, client:users!client_id(id, name_f, name_l, email), account:accounts(id, name, lifecycle)")
         .eq("org_id", auth.org_id)
     )
     if status is not None:
         query = query.eq("status", status)
     if client_id is not None:
         query = query.eq("client_id", client_id)
+    if account_id is not None:
+        query = query.eq("account_id", account_id)
 
     query = query.order(sort_field, desc=not ascending).range(offset, offset + limit - 1)
     result = query.execute()
@@ -170,8 +195,11 @@ async def list_engagements(
         client_data = eng.get("client")
         if isinstance(client_data, list):
             client_data = client_data[0] if client_data else None
+        account_data = eng.get("account")
+        if isinstance(account_data, list):
+            account_data = account_data[0] if account_data else None
         serialized.append(
-            serialize_engagement(eng, client=client_data, include_nested=False).model_dump()
+            serialize_engagement(eng, client=client_data, account=account_data, include_nested=False).model_dump()
         )
 
     path = f"{settings.api_base_url}/api/engagements"
@@ -186,26 +214,59 @@ async def create_engagement(
     """Create a new engagement."""
     supabase = get_supabase()
 
-    # Validate client exists and belongs to org
-    if not is_valid_uuid(body.client_id):
+    # Must have either client_id or account_id
+    if not body.client_id and not body.account_id:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content={"message": "Invalid client_id format", "errors": {"client_id": ["Invalid UUID"]}},
+            content={"message": "Either client_id or account_id is required", "errors": {}},
         )
 
-    client_result = (
-        supabase.table("users")
-        .select("id, name_f, name_l, email")
-        .eq("id", body.client_id)
-        .eq("org_id", auth.org_id)
-        .execute()
-    )
-    if not client_result.data:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={"message": "Client not found", "errors": {"client_id": ["Client not found in organization"]}},
+    # Validate client if provided
+    client_data = None
+    if body.client_id:
+        if not is_valid_uuid(body.client_id):
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"message": "Invalid client_id format", "errors": {"client_id": ["Invalid UUID"]}},
+            )
+
+        client_result = (
+            supabase.table("users")
+            .select("id, name_f, name_l, email")
+            .eq("id", body.client_id)
+            .eq("org_id", auth.org_id)
+            .execute()
         )
-    client_data = client_result.data[0]
+        if not client_result.data:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"message": "Client not found", "errors": {"client_id": ["Client not found in organization"]}},
+            )
+        client_data = client_result.data[0]
+
+    # Validate account if provided
+    account_data = None
+    if body.account_id:
+        if not is_valid_uuid(body.account_id):
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"message": "Invalid account_id format", "errors": {"account_id": ["Invalid UUID"]}},
+            )
+
+        account_result = (
+            supabase.table("accounts")
+            .select("id, name, lifecycle")
+            .eq("id", body.account_id)
+            .eq("org_id", auth.org_id)
+            .is_("deleted_at", "null")
+            .execute()
+        )
+        if not account_result.data:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"message": "Account not found", "errors": {"account_id": ["Account not found in organization"]}},
+            )
+        account_data = account_result.data[0]
 
     # Validate proposal if provided
     if body.proposal_id:
@@ -232,6 +293,7 @@ async def create_engagement(
     engagement_data = {
         "org_id": auth.org_id,
         "client_id": body.client_id,
+        "account_id": body.account_id,
         "name": body.name,
         "status": ENGAGEMENT_STATUS_ACTIVE,
         "proposal_id": body.proposal_id,
@@ -248,7 +310,7 @@ async def create_engagement(
         )
 
     new_engagement = result.data[0]
-    return serialize_engagement(new_engagement, client=client_data, include_nested=True)
+    return serialize_engagement(new_engagement, client=client_data, account=account_data, include_nested=True)
 
 
 @router.get("/{engagement_id}")
@@ -262,10 +324,10 @@ async def retrieve_engagement(
 
     supabase = get_supabase()
 
-    # Get engagement with client
+    # Get engagement with client and account
     result = (
         supabase.table("engagements")
-        .select("*, client:users!client_id(id, name_f, name_l, email)")
+        .select("*, client:users!client_id(id, name_f, name_l, email), account:accounts(id, name, lifecycle)")
         .eq("id", engagement_id)
         .eq("org_id", auth.org_id)
         .execute()
@@ -278,6 +340,9 @@ async def retrieve_engagement(
     client_data = engagement.get("client")
     if isinstance(client_data, list):
         client_data = client_data[0] if client_data else None
+    account_data = engagement.get("account")
+    if isinstance(account_data, list):
+        account_data = account_data[0] if account_data else None
 
     # Get projects (non-deleted)
     projects_result = (
@@ -306,6 +371,7 @@ async def retrieve_engagement(
     return serialize_engagement(
         engagement,
         client=client_data,
+        account=account_data,
         projects=projects,
         conversations=conversations,
         include_nested=True,
@@ -371,13 +437,26 @@ async def update_engagement(
     updated = result.data[0]
 
     # Fetch client for response
-    client_result = (
-        supabase.table("users")
-        .select("id, name_f, name_l, email")
-        .eq("id", updated["client_id"])
-        .execute()
-    )
-    client_data = client_result.data[0] if client_result.data else None
+    client_data = None
+    if updated.get("client_id"):
+        client_result = (
+            supabase.table("users")
+            .select("id, name_f, name_l, email")
+            .eq("id", updated["client_id"])
+            .execute()
+        )
+        client_data = client_result.data[0] if client_result.data else None
+
+    # Fetch account for response
+    account_data = None
+    if updated.get("account_id"):
+        account_result = (
+            supabase.table("accounts")
+            .select("id, name, lifecycle")
+            .eq("id", updated["account_id"])
+            .execute()
+        )
+        account_data = account_result.data[0] if account_result.data else None
 
     # Fetch projects for response
     projects_result = (
@@ -404,6 +483,7 @@ async def update_engagement(
     return serialize_engagement(
         updated,
         client=client_data,
+        account=account_data,
         projects=projects,
         conversations=conversations,
         include_nested=True,

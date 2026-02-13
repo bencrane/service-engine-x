@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Service Agreement</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=JetBrains+Mono:wght@500&family=Fraunces:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0a;
+    --card: #141414;
+    --card-border: #1e1e1e;
+    --card-hover: #1a1a1a;
+    --text: #e8e8e8;
+    --text-muted: #777;
+    --text-dim: #555;
+    --accent: #6C3AED;
+    --accent-light: #8B5CF6;
+    --green: #22c55e;
+    --green-muted: rgba(34,197,94,0.1);
+    --warm: #f59e0b;
+    --warm-muted: rgba(245,158,11,0.1);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px;
+    line-height: 1.6;
+  }
+
+  .page {
+    max-width: 640px;
+    margin: 0 auto;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ---- HEADER ---- */
+  .page-header {
+    text-align: center;
+    padding: 48px 0 40px;
+    border-bottom: 1px solid var(--card-border);
+    margin-bottom: 40px;
+  }
+
+  .page-header h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+
+  .page-header .subtitle {
+    color: var(--text-muted);
+    font-size: 15px;
+  }
+
+  .page-header .price-tag {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-top: 20px;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    padding: 12px 28px;
+    border-radius: 100px;
+  }
+
+  .price-tag .dollar {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 36px;
+    font-weight: 500;
+  }
+
+  .price-tag .label {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-left: 8px;
+  }
+
+  /* ---- SECTIONS ---- */
+  .section {
+    margin-bottom: 36px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+
+  /* ---- OVERVIEW ---- */
+  .overview-text {
+    font-size: 15px;
+    color: var(--text-muted);
+    line-height: 1.75;
+  }
+
+  .overview-text strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* ---- SYSTEM OPTION CARDS ---- */
+  .option-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+
+  .option-card:hover {
+    border-color: #2a2a2a;
+  }
+
+  .option-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+
+  .option-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .option-icon.outbound { background: rgba(108,58,237,0.15); }
+  .option-icon.ugc { background: rgba(245,158,11,0.15); }
+
+  .option-title {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .option-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    line-height: 1.6;
+  }
+
+  .deliverables {
+    list-style: none;
+  }
+
+  .deliverables li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 8px 0;
+    font-size: 14px;
+    color: var(--text-muted);
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+
+  .deliverables li:last-child {
+    border-bottom: none;
+  }
+
+  .deliverables li .check {
+    color: var(--green);
+    font-size: 15px;
+    margin-top: 1px;
+    min-width: 18px;
+  }
+
+  .deliverables li strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .del-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-weight: 400;
+    margin-top: 2px;
+    display: inline-block;
+  }
+
+  /* ---- TERMS ---- */
+  .terms-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 28px;
+  }
+
+  .term-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    gap: 20px;
+  }
+
+  .term-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .term-row:first-child {
+    padding-top: 0;
+  }
+
+  .term-key {
+    color: var(--text-muted);
+    font-size: 14px;
+    min-width: 140px;
+  }
+
+  .term-value {
+    font-size: 14px;
+    font-weight: 500;
+    text-align: right;
+    line-height: 1.5;
+  }
+
+  .term-value .note {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 400;
+    margin-top: 2px;
+  }
+
+  /* ---- SIGNATURE ---- */
+  .sig-section {
+    margin-top: 40px;
+    padding-top: 32px;
+    border-top: 1px solid var(--card-border);
+  }
+
+  .sig-block {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 16px;
+  }
+
+  .sig-block .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .sig-block .signer-name {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+
+  .sig-canvas-wrap {
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    margin-bottom: 12px;
+  }
+
+  .sig-canvas-wrap canvas {
+    display: block;
+    width: 100%;
+    height: 150px;
+    cursor: crosshair;
+  }
+
+  .sig-placeholder {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--text-dim);
+    font-size: 15px;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .sig-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .clear-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+  }
+
+  .clear-btn:hover {
+    color: var(--text-muted);
+  }
+
+  .submit-btn {
+    background: #333;
+    border: none;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    padding: 12px 28px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .submit-btn:hover {
+    background: #444;
+  }
+
+  .next-page-note {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 20px;
+    margin-bottom: 40px;
+  }
+
+  /* ---- RESPONSIVE ---- */
+  @media (max-width: 500px) {
+    .page-header h1 { font-size: 26px; }
+    .price-tag .dollar { font-size: 28px; }
+    .option-card, .terms-card, .sig-block, .pay-card { padding: 20px; }
+    .term-row { flex-direction: column; gap: 4px; }
+    .term-value { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ============ AGREEMENT ============ -->
+  <div class="page-header">
+    <h1>Custom Automation System<br>Design, Build &amp; Deployment</h1>
+    <p style="font-family: 'Fraunces', serif; font-size: 18px; color: var(--text-muted); font-style: italic; margin-top: 6px; margin-bottom: 4px;">Prepared for Uraiv, LLC</p>
+    <p>Service Agreement</p>
+    <div class="price-tag">
+      <span class="dollar">$4,000</span>
+      <span class="label">one-time</span>
+    </div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div class="section">
+    <div class="section-label">Overview</div>
+    <p class="overview-text">
+      This agreement covers the <strong>full design, build, and installation</strong> of one automation system. The client is granted the option to select either system outlined below within 90 days of purchase. Payment of $4,000 must be made on or before February 12th, 2026 via Zelle.<br><br>System architecture, tooling, and configuration are determined by the provider based on the client's business goals. Upon completion, the system will either be transferred to the client or hosted on the provider's infrastructure for up to one year. 30 days of priority support is included post-installation.
+    </p>
+  </div>
+
+  <!-- OPTION A: OUTBOUND -->
+  <div class="section">
+    <div class="option-card">
+      <div class="option-header">
+        <div class="option-icon outbound">📨</div>
+        <div class="option-title">Outbound Sales System</div>
+      </div>
+      <p class="option-desc">
+        A fully built outbound email infrastructure — from lead sourcing through campaign execution. Everything is configured and ready to send.
+      </p>
+      <ul class="deliverables">
+        <li>
+          <span class="check">✓</span>
+          <span><strong>Targeted lead list</strong><br><span class="del-desc">Up to 5,000 contacts, sourced and verified against an ideal customer profile.</span></span>
+        </li>
+        <li>
+          <span class="check">✓</span>
+          <span><strong>Email sending system</strong><br><span class="del-desc">Dedicated mailboxes set up and warmed, configured for deliverability.</span></span>
+        </li>
+        <li>
+          <span class="check">✓</span>
+          <span><strong>Full end-to-end email campaigns</strong><br><span class="del-desc">Multi-step email sequences written, tested, and loaded.</span></span>
+        </li>
+        <li>
+          <span class="check">✓</span>
+          <span><strong>Sending automation</strong><br><span class="del-desc">Scheduling, throttling, and sequencing configured end-to-end.</span></span>
+        </li>
+        <li>
+          <span class="check">✓</span>
+          <span><strong>AI reply handling</strong><br><span class="del-desc">Positive reply detection and routing so no warm lead is missed.</span></span>
+        </li>
+        <li>
+          <span class="check">✓</span>
+          <span><strong>$300 in Google AI Studio credits</strong><br><span class="del-desc">Set up on your behalf to cover initial infrastructure and API usage.</span></span>
+        </li>
+        <li>
+          <span class="check">✓</span>
+          <span><strong>Deliverability optimization</strong><br><span class="del-desc">DNS records, SPF, DKIM, DMARC all configured for maximum inbox placement.</span></span>
+        </li>
+      </ul>
+    </div>
+    <div class="option-card">
+      <div class="option-header">
+        <div class="option-icon ugc">🎬</div>
+        <div class="option-title">AI Ad Content Generation System</div>
+      </div>
+      <p class="option-desc">
+        An automated system that produces hyper-realistic AI-generated "UGC-style" video and image ad content — no creators, no shoots, no scheduling.
+      </p>
+      <ul class="deliverables">
+        <li>
+          <span class="check">✓</span>
+          <span><strong>AI avatar setup</strong><br><span class="del-desc">Realistic digital presenters generated for each product video.</span></span>
+        </li>
+        <li>
+          <span class="check">✓</span>
+          <span><strong>Script generation pipeline</strong><br><span class="del-desc">AI agent generates optimized prompts tailored to each product.</span></span>
+        </li>
+        <li>
+          <span class="check">✓</span>
+          <span><strong>Video production automation</strong><br><span class="del-desc">End-to-end pipeline from product details to finished video, with multiple AI model support.</span></span>
+        </li>
+        <li>
+          <span class="check">✓</span>
+          <span><strong>Management dashboard</strong><br><span class="del-desc">A dedicated interface to manage product details, trigger generation, and track output status.</span></span>
+        </li>
+        <li>
+          <span class="check">✓</span>
+          <span><strong>Automated status tracking</strong><br><span class="del-desc">Real-time generation status and video delivery updated directly in the sheet.</span></span>
+        </li>
+        <li>
+          <span class="check">✓</span>
+          <span><strong>$300 in Google AI Studio credits</strong><br><span class="del-desc">Set up on your behalf to cover initial AI generation and API usage.</span></span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- DISCLOSURE -->
+  <div class="section">
+    <div class="section-label">Disclosure</div>
+    <p class="overview-text">
+      Deliverables listed above represent the intended scope and may be adjusted by the provider based on technical feasibility and platform availability. The final system may differ from what is described. 3rd-party platform or API usage will be incurred by the client directly (e.g. Google Gemini, OpenAI, SmartLead).
+    </p>
+  </div>
+
+  <!-- SIGNATURES -->
+  <div class="sig-section">
+    <div class="section-label">Signature</div>
+
+    <div class="sig-block">
+      <div class="label">Your details</div>
+      <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+        <input type="text" id="firstName" placeholder="First name" style="flex: 1; background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 8px; padding: 12px 14px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none;">
+        <input type="text" id="lastName" placeholder="Last name" style="flex: 1; background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 8px; padding: 12px 14px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none;">
+      </div>
+      <input type="email" id="sigEmail" placeholder="Email address" style="width: 100%; background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 8px; padding: 12px 14px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none;">
+    </div>
+
+    <div class="sig-block">
+      <div class="label">Sign below</div>
+      <div class="sig-canvas-wrap">
+        <canvas id="sigCanvas"></canvas>
+        <div class="sig-placeholder" id="sigPlaceholder">Sign here</div>
+      </div>
+      <div class="sig-actions">
+        <button class="clear-btn" onclick="clearSig()">Clear</button>
+        <button class="submit-btn" onclick="submitSig()">Submit</button>
+      </div>
+    </div>
+
+    <p class="next-page-note" style="font-size: 16px; color: var(--text-muted);">Payment instructions will be presented on the next page.</p>
+  </div>
+
+  <div style="height: 60px;"></div>
+</div>
+
+<script>
+// Signature canvas
+const canvas = document.getElementById('sigCanvas');
+const ctx = canvas.getContext('2d');
+const placeholder = document.getElementById('sigPlaceholder');
+let drawing = false;
+let hasSigned = false;
+
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = 150;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+canvas.addEventListener('mousedown', (e) => {
+  drawing = true;
+  hasSigned = true;
+  placeholder.style.opacity = '0';
+  ctx.beginPath();
+  ctx.moveTo(e.offsetX, e.offsetY);
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (!drawing) return;
+  ctx.lineTo(e.offsetX, e.offsetY);
+  ctx.strokeStyle = '#e8e8e8';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+});
+
+canvas.addEventListener('mouseup', () => drawing = false);
+canvas.addEventListener('mouseleave', () => drawing = false);
+
+// Touch support
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  drawing = true;
+  hasSigned = true;
+  placeholder.style.opacity = '0';
+  ctx.beginPath();
+  ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+});
+
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (!drawing) return;
+  const touch = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+  ctx.strokeStyle = '#e8e8e8';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+});
+
+canvas.addEventListener('touchend', () => drawing = false);
+
+function clearSig() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  hasSigned = false;
+  placeholder.style.opacity = '1';
+}
+
+function submitSig() {
+  if (!hasSigned) return;
+  // Replace with actual navigation or form submission
+  alert('Signature submitted — redirecting to payment.');
+}
+</script>
+
+</body>
+</html>

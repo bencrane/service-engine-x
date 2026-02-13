@@ -1245,7 +1245,89 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
     signer_user_agent = request.headers.get("user-agent", "")
 
     # =========================================================================
-    # FIND OR CREATE CLIENT USER
+    # FIND OR CREATE ACCOUNT + CONTACT (NEW CRM MODEL)
+    # =========================================================================
+    account_id: str | None = None
+    contact_id: str | None = None
+    client_email = proposal["client_email"]
+    company_name = proposal.get("client_company")
+
+    # Extract domain from email for account matching
+    email_domain = client_email.split("@")[1].lower() if "@" in client_email else None
+
+    # Try to find existing account by company name or email domain
+    if company_name:
+        existing_account = supabase.table("accounts").select("id").eq(
+            "org_id", org_id
+        ).eq("name", company_name).is_("deleted_at", "null").execute()
+        if existing_account.data:
+            account_id = existing_account.data[0]["id"]
+
+    if not account_id and email_domain:
+        # Try matching by domain (excluding common email providers)
+        common_domains = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "aol.com"]
+        if email_domain not in common_domains:
+            existing_account = supabase.table("accounts").select("id").eq(
+                "org_id", org_id
+            ).eq("domain", email_domain).is_("deleted_at", "null").execute()
+            if existing_account.data:
+                account_id = existing_account.data[0]["id"]
+
+    # Create account if not found
+    if not account_id:
+        account_name = company_name or f"{proposal['client_name_f']} {proposal['client_name_l']}".strip()
+        account_data = {
+            "org_id": org_id,
+            "name": account_name,
+            "domain": email_domain if email_domain and email_domain not in ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "aol.com"] else None,
+            "lifecycle": "active",  # Signed proposal = active account
+            "source": "proposal",
+            "balance": 0.00,
+            "total_spent": 0.00,
+            "created_at": now,
+            "updated_at": now,
+        }
+        account_result = supabase.table("accounts").insert(account_data).execute()
+        if account_result.data:
+            account_id = account_result.data[0]["id"]
+    else:
+        # Update existing account lifecycle to active
+        supabase.table("accounts").update({
+            "lifecycle": "active",
+            "updated_at": now,
+        }).eq("id", account_id).execute()
+
+    # Find or create contact
+    existing_contact = supabase.table("contacts").select("id, user_id").eq(
+        "org_id", org_id
+    ).eq("email", client_email).is_("deleted_at", "null").execute()
+
+    if existing_contact.data:
+        contact_id = existing_contact.data[0]["id"]
+        # Link to account if not already linked
+        if account_id:
+            supabase.table("contacts").update({
+                "account_id": account_id,
+                "updated_at": now,
+            }).eq("id", contact_id).execute()
+    else:
+        contact_data = {
+            "org_id": org_id,
+            "account_id": account_id,
+            "name_f": proposal["client_name_f"],
+            "name_l": proposal["client_name_l"],
+            "email": client_email,
+            "is_primary": True,
+            "is_billing": True,
+            "created_at": now,
+            "updated_at": now,
+        }
+        contact_result = supabase.table("contacts").insert(contact_data).execute()
+        if contact_result.data:
+            contact_id = contact_result.data[0]["id"]
+
+    # =========================================================================
+    # FIND OR CREATE CLIENT USER (LEGACY - FOR PORTAL ACCESS)
     # =========================================================================
     client_id: str | None = None
 
@@ -1278,8 +1360,15 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
             if new_user_result.data:
                 client_id = new_user_result.data[0]["id"]
 
+    # Link contact to user if both exist
+    if contact_id and client_id:
+        supabase.table("contacts").update({
+            "user_id": client_id,
+            "updated_at": now,
+        }).eq("id", contact_id).execute()
+
     # =========================================================================
-    # CREATE ENGAGEMENT
+    # CREATE ENGAGEMENT (WITH BOTH client_id AND account_id)
     # =========================================================================
     client_name = f"{proposal['client_name_f']} {proposal['client_name_l']}".strip()
     engagement_name = f"{client_name} - {proposal.get('notes', 'Engagement')[:50] if proposal.get('notes') else 'New Engagement'}"
@@ -1287,6 +1376,7 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
     engagement_result = supabase.table("engagements").insert({
         "org_id": org_id,
         "client_id": client_id,
+        "account_id": account_id,  # NEW: Link to account
         "name": engagement_name,
         "status": 1,
         "proposal_id": full_proposal_id,
@@ -1329,6 +1419,7 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
         "org_id": org_id,
         "number": generate_order_number(),
         "user_id": client_id,
+        "account_id": account_id,  # NEW: Link to account
         "service_id": primary_item.get("service_id") if primary_item else None,
         "service_name": order_name,
         "price": proposal["total"],
@@ -1341,6 +1432,8 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
         "metadata": {
             "proposal_id": full_proposal_id,
             "engagement_id": engagement["id"],
+            "account_id": account_id,
+            "contact_id": contact_id,
             "signer_name": signer_name,
             "signer_ip": signer_ip,
             "signed_at": now,
@@ -1432,6 +1525,7 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
         "signed_pdf_url": signed_pdf_url,
         "converted_order_id": order["id"],
         "converted_engagement_id": engagement["id"],
+        "account_id": account_id,  # NEW: Link to account
     }
     if signer_email:
         update_data["client_email"] = signer_email
@@ -1471,6 +1565,8 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
         "success": True,
         "signed_at": now,
         "proposal_id": full_proposal_id,
+        "account_id": account_id,
+        "contact_id": contact_id,
         "engagement_id": engagement["id"],
         "order_id": order["id"],
         "checkout_url": checkout_url,
