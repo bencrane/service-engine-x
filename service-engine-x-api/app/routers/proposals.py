@@ -939,7 +939,7 @@ async def create_proposal(
         "notes": body.notes,
     }
 
-    proposal_result = supabase.table("proposals").insert(proposal_data).select().execute()
+    proposal_result = supabase.table("proposals").insert(proposal_data).select("*").execute()
 
     if not proposal_result.data:
         raise HTTPException(status_code=500, detail="Failed to create proposal")
@@ -1183,7 +1183,7 @@ async def sign_proposal(
         "updated_at": now,
     }
 
-    engagement_result = supabase.table("engagements").insert(engagement_data).select().execute()
+    engagement_result = supabase.table("engagements").insert(engagement_data).execute()
 
     if not engagement_result.data:
         raise HTTPException(status_code=500, detail="Failed to create engagement")
@@ -1208,7 +1208,7 @@ async def sign_proposal(
             "updated_at": now,
         }
 
-        project_result = supabase.table("projects").insert(project_data).select().execute()
+        project_result = supabase.table("projects").insert(project_data).execute()
 
         if project_result.data:
             projects_created.append(project_result.data[0])
@@ -1249,7 +1249,7 @@ async def sign_proposal(
         },
     }
 
-    order_result = supabase.table("orders").insert(order_data).select().execute()
+    order_result = supabase.table("orders").insert(order_data).execute()
 
     if not order_result.data:
         raise HTTPException(status_code=500, detail="Failed to create order")
@@ -1926,7 +1926,7 @@ async def documenso_webhook(request: Request) -> dict[str, str]:
         "proposal_id": proposal["id"],
         "created_at": now,
         "updated_at": now,
-    }).select().execute()
+    }).execute()
 
     if not engagement_result.data:
         raise HTTPException(status_code=500, detail="Failed to create engagement")
@@ -1969,7 +1969,7 @@ async def documenso_webhook(request: Request) -> dict[str, str]:
             "engagement_id": engagement["id"],
             "signed_via": "documenso_webhook",
         },
-    }).select().execute()
+    }).execute()
 
     order = order_result.data[0] if order_result.data else None
 
