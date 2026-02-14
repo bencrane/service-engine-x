@@ -4,6 +4,81 @@ import os
 from typing import Any
 
 
+def send_proposal_email(
+    to_email: str,
+    from_email: str,
+    contact_name: str,
+    org_name: str,
+    signing_url: str,
+    total: str,
+    subject: str | None = None,
+    body: str | None = None,
+) -> dict[str, Any] | None:
+    """
+    Send proposal email to client with signing link.
+
+    If subject/body not provided, uses defaults.
+    Returns the Resend response or None if sending fails.
+    """
+    api_key = os.environ.get("RESEND_API_KEY")
+    if not api_key:
+        return None
+
+    try:
+        import resend
+    except ImportError:
+        return None
+
+    resend.api_key = api_key
+
+    # Default subject
+    if not subject:
+        subject = f"Your proposal from {org_name}"
+
+    # Default body
+    if not body:
+        body = f"""Hi {contact_name.split()[0] if contact_name else 'there'},
+
+Thanks for taking the time to chat. As discussed, I've put together a proposal for you.
+
+Please review the details and sign when you're ready to move forward."""
+
+    # Build email HTML
+    html_content = f"""
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+      <div style="margin-bottom: 32px;">
+        <p style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px 0;">{org_name}</p>
+      </div>
+
+      <div style="white-space: pre-wrap; font-size: 16px; color: #333; line-height: 1.6; margin-bottom: 24px;">{body}</div>
+
+      <div style="background: #f9f9f9; border-radius: 8px; padding: 20px; margin: 24px 0;">
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #666;">Total</p>
+        <p style="margin: 0; font-size: 28px; font-weight: 600; color: #111;">{total}</p>
+      </div>
+
+      <p style="margin: 24px 0;">
+        <a href="{signing_url}" style="display: inline-block; background: #111; color: #fff; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: 500;">View & Sign Proposal</a>
+      </p>
+
+      <p style="font-size: 13px; color: #888; margin-top: 32px;">
+        If you have any questions, just reply to this email.
+      </p>
+    </div>
+    """
+
+    try:
+        response = resend.Emails.send({
+            "from": from_email,
+            "to": [to_email],
+            "subject": subject,
+            "html": html_content,
+        })
+        return response
+    except Exception:
+        return None
+
+
 def send_proposal_signed_email(
     to_emails: list[str],
     from_email: str,

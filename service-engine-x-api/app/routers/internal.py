@@ -17,6 +17,7 @@ from app.models.proposals import (
     ProposalResponse,
     PROPOSAL_STATUS_MAP,
 )
+from app.services.resend_service import send_proposal_email
 
 router = APIRouter(prefix="/internal", tags=["Internal"])
 public_router = APIRouter(prefix="/public", tags=["Public"])
@@ -252,13 +253,17 @@ async def create_proposal_internal(body: AdminCreateProposalRequest) -> Proposal
     """Create a proposal for any organization (internal admin use)."""
     supabase = get_supabase()
 
-    # Verify org exists
-    org_result = supabase.table("organizations").select("id").eq("id", body.org_id).execute()
+    # Get org details for email
+    org_result = supabase.table("organizations").select("id, name, domain, notification_email").eq("id", body.org_id).execute()
     if not org_result.data:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Organization not found",
         )
+    org = org_result.data[0]
+    org_name = org.get("name", "Service Engine X")
+    # Use notification_email if set, otherwise construct from domain
+    from_email = org.get("notification_email") or f"proposals@{org.get('domain', 'serviceengine.xyz')}"
 
     # Validate service_ids if provided
     service_ids = [item.service_id for item in body.items if item.service_id]
@@ -318,6 +323,23 @@ async def create_proposal_internal(body: AdminCreateProposalRequest) -> Proposal
     if not items_result.data:
         supabase.table("proposals").delete().eq("id", proposal["id"]).execute()
         raise HTTPException(status_code=500, detail="Failed to create proposal items")
+
+    # Send proposal email to client
+    proposal_id = proposal["id"]
+    signing_url = f"{SIGNING_URL_BASE}/{proposal_id}"
+    contact_name = f"{body.contact_name_f} {body.contact_name_l}".strip()
+    formatted_total = f"${total:,.0f}"
+
+    send_proposal_email(
+        to_email=body.contact_email.lower().strip(),
+        from_email=from_email,
+        contact_name=contact_name,
+        org_name=org_name,
+        signing_url=signing_url,
+        total=formatted_total,
+        subject=body.email_subject,
+        body=body.email_body,
+    )
 
     return _serialize_proposal(proposal, items_result.data)
 

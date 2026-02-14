@@ -36,6 +36,8 @@ class AdminCreateProposalRequest(CreateProposalRequest):
     """Admin request body for creating a proposal (includes org_id)."""
 
     org_id: str = Field(description="Organization ID to create proposal for")
+    email_subject: str | None = Field(default=None, description="Custom email subject (uses default if not provided)")
+    email_body: str | None = Field(default=None, description="Custom email body (uses default if not provided)")
 
 
 class ProposalItemResponse(BaseModel):
