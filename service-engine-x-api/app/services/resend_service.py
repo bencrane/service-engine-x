@@ -37,11 +37,12 @@ def send_proposal_email(
 
     # Default body
     if not body:
-        body = f"""Hi {contact_name.split()[0] if contact_name else 'there'},
+        first_name = contact_name.split()[0] if contact_name else ""
+        body = f"""{first_name},
 
-Thanks for taking the time to chat. As discussed, I've put together a proposal for you.
+Here's the proposal we discussed. Review the scope and pricing below.
 
-Please review the details and sign when you're ready to move forward."""
+Sign when ready."""
 
     # Build email HTML
     html_content = f"""
@@ -62,7 +63,7 @@ Please review the details and sign when you're ready to move forward."""
       </p>
 
       <p style="font-size: 13px; color: #888; margin-top: 32px;">
-        If you have any questions, just reply to this email.
+        Questions? Reply here.
       </p>
     </div>
     """
