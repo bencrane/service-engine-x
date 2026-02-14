@@ -939,17 +939,21 @@ async def create_proposal(
         "notes": body.notes,
     }
 
-    proposal_result = supabase.table("proposals").insert(proposal_data).select("*").execute()
+    proposal_result = supabase.table("proposals").insert(proposal_data).execute()
 
     if not proposal_result.data:
         raise HTTPException(status_code=500, detail="Failed to create proposal")
 
-    proposal = proposal_result.data[0]
+    proposal_id = proposal_result.data[0]["id"]
+
+    # Fetch full proposal record
+    proposal_fetch = supabase.table("proposals").select("*").eq("id", proposal_id).execute()
+    proposal = proposal_fetch.data[0]
 
     # Create proposal items (each defines a project)
     item_rows = [
         {
-            "proposal_id": proposal["id"],
+            "proposal_id": proposal_id,
             "name": item.name,
             "description": item.description,
             "price": item.price,
@@ -958,14 +962,17 @@ async def create_proposal(
         for item in body.items
     ]
 
-    items_result = supabase.table("proposal_items").insert(item_rows).select("*").execute()
+    items_result = supabase.table("proposal_items").insert(item_rows).execute()
 
-    if not items_result.data:
+    # Fetch full items
+    items_fetch = supabase.table("proposal_items").select("*").eq("proposal_id", proposal_id).execute()
+
+    if not items_fetch.data:
         # Clean up proposal if items failed
         supabase.table("proposals").delete().eq("id", proposal["id"]).execute()
         raise HTTPException(status_code=500, detail="Failed to create proposal items")
 
-    return serialize_proposal(proposal, items_result.data)
+    return serialize_proposal(proposal, items_fetch.data)
 
 
 @router.get("/{proposal_id}", response_model=ProposalResponse)
@@ -1162,7 +1169,7 @@ async def sign_proposal(
                 "balance": "0.00",
                 "spent": "0.00",
                 "custom_fields": {},
-            }).select("id").execute()
+            }).execute()
 
             if new_user_result.data:
                 client_id = new_user_result.data[0]["id"]
@@ -1827,167 +1834,10 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
 
 
 # =============================================================================
-# WEBHOOK ENDPOINTS (For Documenso callbacks — legacy, kept for compatibility)
+# WEBHOOK ENDPOINTS
 # =============================================================================
 
 webhook_router = APIRouter(prefix="/api/webhooks", tags=["Webhooks"])
-
-
-@webhook_router.post("/documenso")
-async def documenso_webhook(request: Request) -> dict[str, str]:
-    """
-    Handle Documenso webhook events.
-
-    When a document is signed, this triggers the proposal signing flow:
-    - Creates engagement, projects, and order
-    - Updates proposal status to Signed
-    """
-    supabase = get_supabase()
-
-    try:
-        payload = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
-
-    event_type = payload.get("event") or payload.get("type")
-    document_id = payload.get("documentId") or payload.get("document_id")
-
-    # We only care about completed/signed events
-    if event_type not in ["DOCUMENT_COMPLETED", "document.completed", "DOCUMENT_SIGNED", "document.signed"]:
-        return {"status": "ignored", "event": event_type or "unknown"}
-
-    if not document_id:
-        raise HTTPException(status_code=400, detail="Missing document_id")
-
-    # Find proposal by Documenso document ID
-    result = supabase.table("proposals").select(
-        "*, proposal_items (*)"
-    ).eq("documenso_document_id", str(document_id)).is_("deleted_at", "null").execute()
-
-    if not result.data:
-        # Document not found - might be from a different system
-        return {"status": "ignored", "reason": "document_not_found"}
-
-    proposal = result.data[0]
-
-    # Skip if already signed
-    if proposal["status"] == 2:
-        return {"status": "already_signed", "proposal_id": proposal["id"]}
-
-    # Skip if not in Sent status
-    if proposal["status"] != 1:
-        return {"status": "ignored", "reason": f"proposal_status_{proposal['status']}"}
-
-    # Trigger the signing flow
-    now = datetime.now(timezone.utc).isoformat()
-    items = proposal.get("proposal_items") or []
-    org_id = proposal["org_id"]
-
-    # Find or create client user
-    client_id: str | None = None
-
-    existing_user_result = supabase.table("users").select("id").eq(
-        "email", proposal["client_email"]
-    ).eq("org_id", org_id).execute()
-
-    if existing_user_result.data:
-        client_id = existing_user_result.data[0]["id"]
-    else:
-        role_result = supabase.table("roles").select("id").eq(
-            "dashboard_access", 0
-        ).execute()
-
-        if role_result.data:
-            new_user_result = supabase.table("users").insert({
-                "org_id": org_id,
-                "email": proposal["client_email"],
-                "name_f": proposal["client_name_f"],
-                "name_l": proposal["client_name_l"],
-                "company": proposal.get("client_company"),
-                "role_id": role_result.data[0]["id"],
-                "status": 1,
-                "balance": "0.00",
-                "spent": "0.00",
-                "custom_fields": {},
-            }).select("id").execute()
-
-            if new_user_result.data:
-                client_id = new_user_result.data[0]["id"]
-
-    # Create engagement
-    client_name = f"{proposal['client_name_f']} {proposal['client_name_l']}".strip()
-    engagement_name = f"{client_name} - {proposal.get('notes', 'Engagement')[:50] if proposal.get('notes') else 'New Engagement'}"
-
-    engagement_result = supabase.table("engagements").insert({
-        "org_id": org_id,
-        "client_id": client_id,
-        "name": engagement_name,
-        "status": 1,
-        "proposal_id": proposal["id"],
-        "created_at": now,
-        "updated_at": now,
-    }).execute()
-
-    if not engagement_result.data:
-        raise HTTPException(status_code=500, detail="Failed to create engagement")
-
-    engagement = engagement_result.data[0]
-
-    # Create projects
-    for item in items:
-        supabase.table("projects").insert({
-            "engagement_id": engagement["id"],
-            "org_id": org_id,
-            "name": item["name"],
-            "description": item.get("description"),
-            "status": 1,
-            "phase": 1,
-            "service_id": item.get("service_id"),
-            "created_at": now,
-            "updated_at": now,
-        }).execute()
-
-    # Create order
-    primary_item = items[0] if items else None
-    order_name = primary_item["name"] if primary_item else "Proposal Order"
-
-    order_result = supabase.table("orders").insert({
-        "org_id": org_id,
-        "number": generate_order_number(),
-        "user_id": client_id,
-        "service_id": primary_item.get("service_id") if primary_item else None,
-        "service_name": order_name,
-        "price": proposal["total"],
-        "currency": "USD",
-        "quantity": 1,
-        "status": 0,
-        "engagement_id": engagement["id"],
-        "note": f"Created from proposal. {proposal.get('notes') or ''}".strip(),
-        "form_data": {},
-        "metadata": {
-            "proposal_id": proposal["id"],
-            "engagement_id": engagement["id"],
-            "signed_via": "documenso_webhook",
-        },
-    }).execute()
-
-    order = order_result.data[0] if order_result.data else None
-
-    # Update proposal
-    supabase.table("proposals").update({
-        "status": 2,
-        "signed_at": now,
-        "updated_at": now,
-        "converted_order_id": order["id"] if order else None,
-        "converted_engagement_id": engagement["id"],
-    }).eq("id", proposal["id"]).execute()
-
-    return {
-        "status": "signed",
-        "proposal_id": proposal["id"],
-        "engagement_id": engagement["id"],
-        "order_id": order["id"] if order else None,
-    }
 
 
 @webhook_router.post("/stripe")
