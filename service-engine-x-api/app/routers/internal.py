@@ -1,5 +1,6 @@
 """Internal API router for admin panels."""
 
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
@@ -7,6 +8,15 @@ from pydantic import BaseModel, Field
 
 from app.config import get_settings
 from app.database import get_supabase
+
+# Signing URL base (where clients view/sign proposals)
+SIGNING_URL_BASE = "https://revenueactivation.com/p"
+from app.models.proposals import (
+    AdminCreateProposalRequest,
+    ProposalItemResponse,
+    ProposalResponse,
+    PROPOSAL_STATUS_MAP,
+)
 
 router = APIRouter(prefix="/internal", tags=["Internal"])
 public_router = APIRouter(prefix="/public", tags=["Public"])
@@ -193,6 +203,123 @@ async def create_system(body: InternalSystemCreate) -> SystemResponse:
         )
 
     return SystemResponse(**result.data[0])
+
+
+# ============== Proposals ==============
+
+
+def _serialize_proposal_item(item: dict) -> ProposalItemResponse:
+    """Serialize a proposal item."""
+    return ProposalItemResponse(
+        id=item["id"],
+        name=item["name"],
+        description=item.get("description"),
+        price=f"{float(item.get('price', 0)):.2f}",
+        service_id=item.get("service_id"),
+        created_at=item["created_at"],
+    )
+
+
+def _serialize_proposal(proposal: dict, items: list[dict]) -> ProposalResponse:
+    """Serialize a proposal with items."""
+    status_id = proposal.get("status", 0)
+    proposal_id = proposal["id"]
+    return ProposalResponse(
+        id=proposal_id,
+        account_name=proposal.get("client_company"),
+        contact_email=proposal["client_email"],
+        contact_name=f"{proposal.get('client_name_f', '')} {proposal.get('client_name_l', '')}".strip(),
+        contact_name_f=proposal.get("client_name_f", ""),
+        contact_name_l=proposal.get("client_name_l", ""),
+        status=PROPOSAL_STATUS_MAP.get(status_id, "Unknown"),
+        status_id=status_id,
+        total=f"{float(proposal.get('total', 0)):.2f}",
+        notes=proposal.get("notes"),
+        created_at=proposal["created_at"],
+        updated_at=proposal["updated_at"],
+        sent_at=proposal.get("sent_at"),
+        signed_at=proposal.get("signed_at"),
+        pdf_url=proposal.get("pdf_url"),
+        signing_url=f"{SIGNING_URL_BASE}/{proposal_id}",
+        converted_order_id=proposal.get("converted_order_id"),
+        converted_engagement_id=proposal.get("converted_engagement_id"),
+        items=[_serialize_proposal_item(item) for item in items],
+    )
+
+
+@router.post("/proposals", status_code=status.HTTP_201_CREATED, dependencies=[Depends(verify_internal_key)])
+async def create_proposal_internal(body: AdminCreateProposalRequest) -> ProposalResponse:
+    """Create a proposal for any organization (internal admin use)."""
+    supabase = get_supabase()
+
+    # Verify org exists
+    org_result = supabase.table("organizations").select("id").eq("id", body.org_id).execute()
+    if not org_result.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found",
+        )
+
+    # Validate service_ids if provided
+    service_ids = [item.service_id for item in body.items if item.service_id]
+    if service_ids:
+        services_result = (
+            supabase.table("services")
+            .select("id")
+            .eq("org_id", body.org_id)
+            .is_("deleted_at", "null")
+            .in_("id", service_ids)
+            .execute()
+        )
+        found_service_ids = {s["id"] for s in (services_result.data or [])}
+        missing_services = [sid for sid in service_ids if sid not in found_service_ids]
+        if missing_services:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Service with ID {missing_services[0]} does not exist.",
+            )
+
+    # Calculate total
+    total = sum(item.price for item in body.items)
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Create proposal as Sent (ready for client to view/sign)
+    proposal_data = {
+        "org_id": body.org_id,
+        "client_email": body.contact_email.lower().strip(),
+        "client_name_f": body.contact_name_f.strip(),
+        "client_name_l": body.contact_name_l.strip(),
+        "client_company": body.account_name,
+        "status": 1,  # Sent
+        "sent_at": now,
+        "total": total,
+        "notes": body.notes,
+    }
+
+    proposal_result = supabase.table("proposals").insert(proposal_data).select().execute()
+    if not proposal_result.data:
+        raise HTTPException(status_code=500, detail="Failed to create proposal")
+
+    proposal = proposal_result.data[0]
+
+    # Create proposal items
+    item_rows = [
+        {
+            "proposal_id": proposal["id"],
+            "name": item.name,
+            "description": item.description,
+            "price": item.price,
+            "service_id": item.service_id,
+        }
+        for item in body.items
+    ]
+
+    items_result = supabase.table("proposal_items").insert(item_rows).select("*").execute()
+    if not items_result.data:
+        supabase.table("proposals").delete().eq("id", proposal["id"]).execute()
+        raise HTTPException(status_code=500, detail="Failed to create proposal items")
+
+    return _serialize_proposal(proposal, items_result.data)
 
 
 # ============== Public Endpoints (no auth) ==============

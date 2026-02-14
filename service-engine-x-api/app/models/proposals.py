@@ -32,6 +32,12 @@ class CreateProposalRequest(BaseModel):
     notes: str | None = None
 
 
+class AdminCreateProposalRequest(CreateProposalRequest):
+    """Admin request body for creating a proposal (includes org_id)."""
+
+    org_id: str = Field(description="Organization ID to create proposal for")
+
+
 class ProposalItemResponse(BaseModel):
     """Response schema for proposal item (represents a project to be created)."""
 
@@ -61,6 +67,7 @@ class ProposalResponse(BaseModel):
     sent_at: str | None
     signed_at: str | None
     pdf_url: str | None = None
+    signing_url: str | None = None
     converted_order_id: str | None
     converted_engagement_id: str | None = None
     items: list[ProposalItemResponse] = []
