@@ -719,11 +719,11 @@ def serialize_proposal_list_item(proposal: dict[str, Any]) -> ProposalListItem:
     status_id = proposal.get("status", 0)
     return ProposalListItem(
         id=proposal["id"],
-        client_email=proposal["client_email"],
-        client_name=f"{proposal.get('client_name_f', '')} {proposal.get('client_name_l', '')}".strip(),
-        client_name_f=proposal.get("client_name_f", ""),
-        client_name_l=proposal.get("client_name_l", ""),
-        client_company=proposal.get("client_company"),
+        account_name=proposal.get("client_company"),
+        contact_email=proposal["client_email"],
+        contact_name=f"{proposal.get('client_name_f', '')} {proposal.get('client_name_l', '')}".strip(),
+        contact_name_f=proposal.get("client_name_f", ""),
+        contact_name_l=proposal.get("client_name_l", ""),
         status=PROPOSAL_STATUS_MAP.get(status_id, "Unknown"),
         status_id=status_id,
         total=format_currency(proposal.get("total")),
@@ -755,11 +755,11 @@ def serialize_proposal(proposal: dict[str, Any], items: list[dict[str, Any]]) ->
     status_id = proposal.get("status", 0)
     return ProposalResponse(
         id=proposal["id"],
-        client_email=proposal["client_email"],
-        client_name=f"{proposal.get('client_name_f', '')} {proposal.get('client_name_l', '')}".strip(),
-        client_name_f=proposal.get("client_name_f", ""),
-        client_name_l=proposal.get("client_name_l", ""),
-        client_company=proposal.get("client_company"),
+        account_name=proposal.get("client_company"),
+        contact_email=proposal["client_email"],
+        contact_name=f"{proposal.get('client_name_f', '')} {proposal.get('client_name_l', '')}".strip(),
+        contact_name_f=proposal.get("client_name_f", ""),
+        contact_name_l=proposal.get("client_name_l", ""),
         status=PROPOSAL_STATUS_MAP.get(status_id, "Unknown"),
         status_id=status_id,
         total=format_currency(proposal.get("total")),
@@ -927,13 +927,13 @@ async def create_proposal(
     # Calculate total from item prices
     total = sum(item.price for item in body.items)
 
-    # Create proposal
+    # Create proposal (map account/contact fields to database columns)
     proposal_data = {
         "org_id": auth.org_id,
-        "client_email": body.client_email.lower().strip(),
-        "client_name_f": body.client_name_f.strip(),
-        "client_name_l": body.client_name_l.strip(),
-        "client_company": body.client_company,
+        "client_email": body.contact_email.lower().strip(),
+        "client_name_f": body.contact_name_f.strip(),
+        "client_name_l": body.contact_name_l.strip(),
+        "client_company": body.account_name,
         "status": 0,  # Draft
         "total": total,
         "notes": body.notes,
@@ -1383,9 +1383,9 @@ async def get_public_proposal(proposal_id: str) -> dict[str, Any]:
     return {
         "id": proposal["id"],
         "org_name": org.get("name", ""),
-        "client_name": f"{proposal.get('client_name_f', '')} {proposal.get('client_name_l', '')}".strip(),
-        "client_company": proposal.get("client_company"),
-        "client_email": proposal.get("client_email"),
+        "contact_name": f"{proposal.get('client_name_f', '')} {proposal.get('client_name_l', '')}".strip(),
+        "account_name": proposal.get("client_company"),
+        "contact_email": proposal.get("client_email"),
         "status": PROPOSAL_STATUS_MAP.get(proposal["status"], "Unknown"),
         "status_id": proposal["status"],
         "total": format_currency(proposal.get("total")),

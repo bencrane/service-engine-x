@@ -24,10 +24,10 @@ class ProposalItemInput(BaseModel):
 class CreateProposalRequest(BaseModel):
     """Request body for creating a proposal."""
 
-    client_email: EmailStr
-    client_name_f: str = Field(min_length=1)
-    client_name_l: str = Field(min_length=1)
-    client_company: str | None = None
+    account_name: str | None = Field(default=None, description="Company/Account name")
+    contact_email: EmailStr = Field(description="Contact email")
+    contact_name_f: str = Field(min_length=1, description="Contact first name")
+    contact_name_l: str = Field(min_length=1, description="Contact last name")
     items: list[ProposalItemInput] = Field(min_length=1)
     notes: str | None = None
 
@@ -47,11 +47,11 @@ class ProposalResponse(BaseModel):
     """Response schema for a single proposal."""
 
     id: str
-    client_email: str
-    client_name: str
-    client_name_f: str
-    client_name_l: str
-    client_company: str | None
+    account_name: str | None
+    contact_email: str
+    contact_name: str
+    contact_name_f: str
+    contact_name_l: str
     status: str
     status_id: int
     total: str
@@ -70,11 +70,11 @@ class ProposalListItem(BaseModel):
     """Response schema for proposal in list (without items)."""
 
     id: str
-    client_email: str
-    client_name: str
-    client_name_f: str
-    client_name_l: str
-    client_company: str | None
+    account_name: str | None
+    contact_email: str
+    contact_name: str
+    contact_name_f: str
+    contact_name_l: str
     status: str
     status_id: int
     total: str
