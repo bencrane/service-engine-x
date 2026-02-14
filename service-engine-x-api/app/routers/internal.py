@@ -330,16 +330,20 @@ async def create_proposal_internal(body: AdminCreateProposalRequest) -> Proposal
     contact_name = f"{body.contact_name_f} {body.contact_name_l}".strip()
     formatted_total = f"${total:,.0f}"
 
-    send_proposal_email(
-        to_email=body.contact_email.lower().strip(),
-        from_email=from_email,
-        contact_name=contact_name,
-        org_name=org_name,
-        signing_url=signing_url,
-        total=formatted_total,
-        subject=body.email_subject,
-        body=body.email_body,
-    )
+    try:
+        send_proposal_email(
+            to_email=body.contact_email.lower().strip(),
+            from_email=from_email,
+            contact_name=contact_name,
+            org_name=org_name,
+            signing_url=signing_url,
+            total=formatted_total,
+            subject=body.email_subject,
+            body=body.email_body,
+        )
+    except Exception as e:
+        # Log but don't fail the request if email fails
+        print(f"Failed to send proposal email: {e}")
 
     return _serialize_proposal(proposal, items_result.data)
 
