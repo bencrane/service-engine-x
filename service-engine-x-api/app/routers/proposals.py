@@ -1501,18 +1501,25 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
 
     # Generate signed PDF from frontend HTML (if provided)
     signed_pdf_url = None
-    if signed_html:
+    pdf_status = None
+
+    if not signed_html:
+        pdf_status = "skipped: signed_html not provided by frontend"
+    else:
+        html_length = len(signed_html)
+        pdf_status = f"received signed_html ({html_length} chars), generating PDF..."
         try:
             filename = f"proposal-{full_proposal_id[:8]}-signed.pdf"
             pdf_bytes = generate_pdf_docraptor(signed_html, filename)
             signed_pdf_url = upload_proposal_pdf(
                 org_id, f"{full_proposal_id}-signed", pdf_bytes
             )
+            pdf_status = f"success: PDF generated ({len(pdf_bytes)} bytes)"
         except Exception as e:
             # PDF generation is non-blocking — signing still succeeds
-            # Log the error for debugging
             import logging
             logging.error(f"PDF generation failed for proposal {full_proposal_id}: {e}")
+            pdf_status = f"error: {str(e)}"
 
     # Update client_email if signer provided their email
     update_data = {
@@ -1571,6 +1578,7 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
         "order_id": order["id"],
         "checkout_url": checkout_url,
         "signed_pdf_url": signed_pdf_url,
+        "pdf_status": pdf_status,  # For debugging: shows if signed_html was received and PDF result
         "projects": [{"id": p["id"], "name": p["name"]} for p in projects_created],
     }
 
