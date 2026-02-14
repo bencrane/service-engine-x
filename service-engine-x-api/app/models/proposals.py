@@ -30,14 +30,14 @@ class CreateProposalRequest(BaseModel):
     contact_name_l: str = Field(min_length=1, description="Contact last name")
     items: list[ProposalItemInput] = Field(min_length=1)
     notes: str | None = None
+    email_subject: str | None = Field(default=None, description="Custom email subject")
+    email_body: str | None = Field(default=None, description="Custom email body")
 
 
 class AdminCreateProposalRequest(CreateProposalRequest):
     """Admin request body for creating a proposal (includes org_id)."""
 
     org_id: str = Field(description="Organization ID to create proposal for")
-    email_subject: str | None = Field(default=None, description="Custom email subject (uses default if not provided)")
-    email_body: str | None = Field(default=None, description="Custom email body (uses default if not provided)")
 
 
 class ProposalItemResponse(BaseModel):

@@ -994,8 +994,8 @@ async def create_proposal(
             org_name=org_name,
             signing_url=signing_url,
             total=formatted_total,
-            subject=None,
-            body=None,
+            subject=body.email_subject,
+            body=body.email_body,
         )
     except Exception as e:
         print(f"Failed to send proposal email: {e}")
