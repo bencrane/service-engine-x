@@ -1446,11 +1446,11 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
         upper_prefix = prefix[:-1] + hex(int(prefix[-1], 16) + 1)[2:]
         uuid_upper = f"{upper_prefix}-0000-0000-0000-000000000000"
         result = supabase.table("proposals").select(
-            "*, proposal_items (*)"
+            "*, proposal_items (*), organizations:org_id (name)"
         ).gte("id", uuid_lower).lt("id", uuid_upper).is_("deleted_at", "null").execute()
     else:
         result = supabase.table("proposals").select(
-            "*, proposal_items (*)"
+            "*, proposal_items (*), organizations:org_id (name)"
         ).eq("id", proposal_id).is_("deleted_at", "null").execute()
 
     if not result.data:
@@ -1459,6 +1459,8 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
     proposal = result.data[0]
     full_proposal_id = proposal["id"]
     org_id = proposal["org_id"]
+    org = proposal.get("organizations") or {}
+    org_name = org.get("name", "Service Engine X")
 
     # Must be in Sent status
     if proposal["status"] != 1:
