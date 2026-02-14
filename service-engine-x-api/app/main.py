@@ -1,5 +1,7 @@
 """FastAPI application entry point."""
 
+import traceback
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -125,6 +127,32 @@ async def validation_exception_handler(
     return JSONResponse(
         status_code=400,
         content={"message": "The given data was invalid.", "errors": errors},
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """
+    Catch all unhandled exceptions and return actual error details.
+    This makes debugging much easier.
+    """
+    error_detail = {
+        "error": str(exc),
+        "type": type(exc).__name__,
+        "path": str(request.url.path),
+        "method": request.method,
+    }
+
+    # Include traceback in response for debugging
+    error_detail["traceback"] = traceback.format_exc()
+
+    # Log it
+    print(f"[ERROR] {request.method} {request.url.path}: {exc}")
+    print(traceback.format_exc())
+
+    return JSONResponse(
+        status_code=500,
+        content=error_detail,
     )
 
 
