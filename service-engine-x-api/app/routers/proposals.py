@@ -20,7 +20,7 @@ from app.services.stripe_service import (
     create_checkout_session,
     verify_webhook_signature,
 )
-from app.services.resend_service import send_proposal_signed_email
+from app.services.resend_service import send_proposal_signed_email, send_proposal_email
 from app.models.proposals import (
     PROPOSAL_STATUS_MAP,
     CreateProposalRequest,
@@ -927,6 +927,14 @@ async def create_proposal(
     # Calculate total from item prices
     total = sum(item.price for item in body.items)
 
+    # Get org details for email
+    org_result = supabase.table("organizations").select("name, domain, notification_email").eq("id", auth.org_id).execute()
+    org = org_result.data[0] if org_result.data else {}
+    org_name = org.get("name", "Service Engine X")
+    from_email = org.get("notification_email") or f"proposals@{org.get('domain', 'serviceengine.xyz')}"
+
+    now = datetime.now(timezone.utc).isoformat()
+
     # Create proposal (map account/contact fields to database columns)
     proposal_data = {
         "org_id": auth.org_id,
@@ -934,7 +942,8 @@ async def create_proposal(
         "client_name_f": body.contact_name_f.strip(),
         "client_name_l": body.contact_name_l.strip(),
         "client_company": body.account_name,
-        "status": 0,  # Draft
+        "status": 1,  # Sent
+        "sent_at": now,
         "total": total,
         "notes": body.notes,
     }
@@ -971,6 +980,25 @@ async def create_proposal(
         # Clean up proposal if items failed
         supabase.table("proposals").delete().eq("id", proposal["id"]).execute()
         raise HTTPException(status_code=500, detail="Failed to create proposal items")
+
+    # Send proposal email
+    contact_name = f"{body.contact_name_f} {body.contact_name_l}".strip()
+    signing_url = f"https://revenueactivation.com/p/{proposal_id}"
+    formatted_total = f"${total:,.0f}"
+
+    try:
+        send_proposal_email(
+            to_email=body.contact_email.lower().strip(),
+            from_email=from_email,
+            contact_name=contact_name,
+            org_name=org_name,
+            signing_url=signing_url,
+            total=formatted_total,
+            subject=None,
+            body=None,
+        )
+    except Exception as e:
+        print(f"Failed to send proposal email: {e}")
 
     return serialize_proposal(proposal, items_fetch.data)
 
