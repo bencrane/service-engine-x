@@ -263,7 +263,7 @@ async def assign_tags(supabase: Any, ticket_id: str, tag_names: list[str]) -> No
             tag_id = tag_result.data[0]["id"]
         else:
             # Create new tag
-            new_tag_result = supabase.table("tags").insert({"name": tag_name}).select("id").execute()
+            new_tag_result = supabase.table("tags").insert({"name": tag_name}).execute()
             if new_tag_result.data:
                 tag_id = new_tag_result.data[0]["id"]
             else:
@@ -440,7 +440,7 @@ async def create_ticket(
         "source": "API",
     }
 
-    ticket_result = supabase.table("tickets").insert(ticket_data).select().execute()
+    ticket_result = supabase.table("tickets").insert(ticket_data).execute()
 
     if not ticket_result.data:
         raise HTTPException(status_code=500, detail="Failed to create ticket")

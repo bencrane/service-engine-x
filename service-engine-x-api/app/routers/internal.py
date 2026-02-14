@@ -301,7 +301,7 @@ async def create_proposal_internal(body: AdminCreateProposalRequest) -> Proposal
         "notes": body.notes,
     }
 
-    proposal_result = supabase.table("proposals").insert(proposal_data).select().execute()
+    proposal_result = supabase.table("proposals").insert(proposal_data).execute()
     if not proposal_result.data:
         raise HTTPException(status_code=500, detail="Failed to create proposal")
 
@@ -319,7 +319,7 @@ async def create_proposal_internal(body: AdminCreateProposalRequest) -> Proposal
         for item in body.items
     ]
 
-    items_result = supabase.table("proposal_items").insert(item_rows).select("*").execute()
+    items_result = supabase.table("proposal_items").insert(item_rows).execute()
     if not items_result.data:
         supabase.table("proposals").delete().eq("id", proposal["id"]).execute()
         raise HTTPException(status_code=500, detail="Failed to create proposal items")

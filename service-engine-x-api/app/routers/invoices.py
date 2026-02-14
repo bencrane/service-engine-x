@@ -321,7 +321,7 @@ async def create_invoice(
                 "name_f": user_data.get("name_f", ""),
                 "name_l": user_data.get("name_l", ""),
                 **{k: v for k, v in user_data.items() if k not in ["name_f", "name_l", "email"]},
-            }).select("id").execute()
+            }).execute()
 
             if not new_user_result.data:
                 raise HTTPException(status_code=500, detail="Failed to create client.")
@@ -428,7 +428,7 @@ async def create_invoice(
         "employee_id": None,
     }
 
-    invoice_result = supabase.table("invoices").insert(invoice_data).select().execute()
+    invoice_result = supabase.table("invoices").insert(invoice_data).execute()
 
     if not invoice_result.data:
         raise HTTPException(status_code=500, detail="Failed to create invoice")
@@ -453,7 +453,7 @@ async def create_invoice(
         for item in body.items
     ]
 
-    items_result = supabase.table("invoice_items").insert(item_rows).select().execute()
+    items_result = supabase.table("invoice_items").insert(item_rows).execute()
 
     # Fetch full invoice with relations
     full_invoice = supabase.table("invoices").select(
@@ -615,7 +615,7 @@ async def update_invoice(
         for item in body.items
     ]
 
-    supabase.table("invoice_items").insert(item_rows).select().execute()
+    supabase.table("invoice_items").insert(item_rows).execute()
 
     # Fetch updated invoice
     updated_result = supabase.table("invoices").select(
@@ -725,7 +725,7 @@ async def charge_invoice(
                 "quantity": item["quantity"],
                 "price": item["amount"],
                 "currency": invoice["currency"],
-            }).select("id").execute()
+            }).execute()
 
             if order_result.data:
                 # Link item to order
@@ -804,7 +804,7 @@ async def mark_invoice_paid(
                 "quantity": item["quantity"],
                 "price": item["amount"],
                 "currency": invoice["currency"],
-            }).select("id").execute()
+            }).execute()
 
             if order_result.data:
                 supabase.table("invoice_items").update({
