@@ -313,6 +313,245 @@ def generate_proposal_html(
 """
 
 
+def generate_signed_proposal_html(
+    proposal: dict[str, Any],
+    items: list[dict[str, Any]],
+    org_name: str,
+    signature_data: str,
+    signed_at: str,
+) -> str:
+    """Generate HTML for the signed proposal PDF (server-side template)."""
+    client_name = f"{proposal.get('client_name_f', '')} {proposal.get('client_name_l', '')}".strip()
+    client_company = proposal.get("client_company") or ""
+    total = float(proposal.get("total", 0))
+    formatted_total = f"${total:,.0f}"
+    notes = proposal.get("notes") or ""
+
+    # Format signed date
+    try:
+        signed_date = datetime.fromisoformat(signed_at.replace("Z", "+00:00")).strftime("%B %d, %Y")
+    except Exception:
+        signed_date = signed_at
+
+    # Build items HTML
+    items_html = ""
+    for item in items:
+        item_name = item.get("name", "Project")
+        item_desc = item.get("description", "")
+        item_price = float(item.get("price", 0))
+        items_html += f"""
+        <div class="item">
+            <div class="item-header">
+                <span class="item-name">{item_name}</span>
+                <span class="item-price">${item_price:,.0f}</span>
+            </div>
+            <p class="item-desc">{item_desc}</p>
+        </div>
+        """
+
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Proposal for {client_company or client_name} - Signed</title>
+    <style>
+        @page {{
+            size: letter;
+            margin: 0;
+        }}
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            padding: 48px;
+            font-size: 11pt;
+            line-height: 1.5;
+        }}
+        .card {{
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 8px;
+            overflow: hidden;
+        }}
+        .header {{
+            padding: 40px 40px 32px 40px;
+            border-bottom: 1px solid #1a1a1a;
+        }}
+        .org-name {{
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 24px;
+        }}
+        .title {{
+            font-size: 28px;
+            font-weight: 300;
+            color: #fff;
+            margin-bottom: 8px;
+        }}
+        .client-name {{
+            color: rgba(255,255,255,0.5);
+            font-size: 14px;
+        }}
+        .section {{
+            padding: 32px 40px;
+            border-bottom: 1px solid #1a1a1a;
+        }}
+        .section-label {{
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 20px;
+        }}
+        .item {{
+            margin-bottom: 20px;
+        }}
+        .item:last-child {{
+            margin-bottom: 0;
+        }}
+        .item-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 4px;
+        }}
+        .item-name {{
+            font-weight: 500;
+            color: #fff;
+        }}
+        .item-price {{
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 12px;
+            color: rgba(255,255,255,0.8);
+        }}
+        .item-desc {{
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            line-height: 1.5;
+        }}
+        .total-section {{
+            padding: 24px 40px;
+            background: rgba(255,255,255,0.02);
+        }}
+        .total-row {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        .total-label {{
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.4);
+        }}
+        .total-value {{
+            font-size: 24px;
+            font-weight: 300;
+            color: #fff;
+        }}
+        .notes-section {{
+            padding: 32px 40px;
+            border-bottom: 1px solid #1a1a1a;
+        }}
+        .notes-text {{
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+            line-height: 1.6;
+        }}
+        .terms {{
+            padding: 32px 40px;
+            border-bottom: 1px solid #1a1a1a;
+        }}
+        .terms-text {{
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            line-height: 1.6;
+        }}
+        .signed-section {{
+            padding: 32px 40px;
+            background: rgba(34, 197, 94, 0.05);
+        }}
+        .signed-badge {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }}
+        .check-icon {{
+            width: 20px;
+            height: 20px;
+            color: #22c55e;
+        }}
+        .signed-text {{
+            color: #22c55e;
+            font-size: 14px;
+        }}
+        .signature-image {{
+            margin-top: 16px;
+            max-height: 60px;
+        }}
+        .footer {{
+            display: flex;
+            justify-content: space-between;
+            padding: 24px 8px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.2);
+        }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="header">
+            <div class="org-name">{org_name}</div>
+            <div class="title">Proposal for {client_company or client_name}</div>
+            <div class="client-name">{client_name}</div>
+        </div>
+
+        <div class="section">
+            <div class="section-label">Scope of Work</div>
+            {items_html}
+        </div>
+
+        <div class="total-section">
+            <div class="total-row">
+                <span class="total-label">Total Investment</span>
+                <span class="total-value">{formatted_total}</span>
+            </div>
+        </div>
+
+        {"<div class='notes-section'><div class='section-label'>Notes</div><div class='notes-text'>" + notes + "</div></div>" if notes else ""}
+
+        <div class="terms">
+            <div class="terms-text">
+                By signing below, you agree to the scope of work and investment outlined in this proposal and our Terms of Service.
+            </div>
+        </div>
+
+        <div class="signed-section">
+            <div class="signed-badge">
+                <svg class="check-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span class="signed-text">Signed and accepted</span>
+            </div>
+            <img class="signature-image" src="{signature_data}" alt="Signature" />
+        </div>
+    </div>
+
+    <div class="footer">
+        <span>{signed_date}</span>
+        <span>{org_name}</span>
+    </div>
+</body>
+</html>"""
+
+
 def generate_pdf_docraptor(html_content: str, filename: str) -> bytes:
     """Convert HTML to PDF using DocRaptor API."""
     import docraptor
@@ -1192,7 +1431,6 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
     signature_data = body.get("signature")
     signer_name = body.get("signer_name")
     signer_email = body.get("signer_email")
-    signed_html = body.get("signed_html")
 
     if not signature_data:
         raise HTTPException(status_code=400, detail="Signature is required")
@@ -1499,27 +1737,30 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
     # UPDATE PROPOSAL — mark as signed with signature proof
     # =========================================================================
 
-    # Generate signed PDF from frontend HTML (if provided)
+    # Generate signed PDF using server-side template
     signed_pdf_url = None
     pdf_status = None
 
-    if not signed_html:
-        pdf_status = "skipped: signed_html not provided by frontend"
-    else:
-        html_length = len(signed_html)
-        pdf_status = f"received signed_html ({html_length} chars), generating PDF..."
-        try:
-            filename = f"proposal-{full_proposal_id[:8]}-signed.pdf"
-            pdf_bytes = generate_pdf_docraptor(signed_html, filename)
-            signed_pdf_url = upload_proposal_pdf(
-                org_id, f"{full_proposal_id}-signed", pdf_bytes
-            )
-            pdf_status = f"success: PDF generated ({len(pdf_bytes)} bytes)"
-        except Exception as e:
-            # PDF generation is non-blocking — signing still succeeds
-            import logging
-            logging.error(f"PDF generation failed for proposal {full_proposal_id}: {e}")
-            pdf_status = f"error: {str(e)}"
+    try:
+        # Generate HTML from proposal data (no frontend HTML needed)
+        signed_html = generate_signed_proposal_html(
+            proposal=proposal,
+            items=items,
+            org_name=org_name,
+            signature_data=signature_data,
+            signed_at=now,
+        )
+        filename = f"proposal-{full_proposal_id[:8]}-signed.pdf"
+        pdf_bytes = generate_pdf_docraptor(signed_html, filename)
+        signed_pdf_url = upload_proposal_pdf(
+            org_id, f"{full_proposal_id}-signed", pdf_bytes
+        )
+        pdf_status = f"success: PDF generated ({len(pdf_bytes)} bytes)"
+    except Exception as e:
+        # PDF generation is non-blocking — signing still succeeds
+        import logging
+        logging.error(f"PDF generation failed for proposal {full_proposal_id}: {e}")
+        pdf_status = f"error: {str(e)}"
 
     # Update client_email if signer provided their email
     update_data = {
