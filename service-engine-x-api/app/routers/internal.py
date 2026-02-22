@@ -19,7 +19,7 @@ from app.models.proposals import (
 )
 from app.services.resend_service import send_proposal_email
 
-router = APIRouter(prefix="/internal", tags=["Internal"])
+router = APIRouter(prefix="/api/internal", tags=["Internal"])
 
 
 async def verify_internal_key(x_internal_key: str = Header(...)) -> None:
