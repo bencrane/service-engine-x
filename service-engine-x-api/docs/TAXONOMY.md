@@ -209,10 +209,10 @@ Project (actual work being done)
 - `name` - Deliverable name (e.g., "CRM Data Audit & Cleanup")
 - `description` - Scope description
 - `price` - Price for this item
-- `service_id` - Optional reference to Service template
+- `service_id` - **Required** reference to Service template
 
 **Becomes:**
-- A Project when proposal is signed
+- A Project when proposal is signed (inherits `service_id`)
 
 **Example:**
 ```
@@ -268,7 +268,7 @@ Proposal for SecurityPal AI - $13,500
 - `description` - Scope
 - `status` - Project state
 - `phase` - Current phase
-- `service_id` - Template reference (optional)
+- `service_id` - Service template reference (inherited from proposal item)
 - `completed_at` - When completed
 
 **Status values:**

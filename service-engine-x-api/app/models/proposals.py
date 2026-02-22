@@ -18,7 +18,7 @@ class ProposalItemInput(BaseModel):
     name: str = Field(min_length=1, description="Project name")
     description: str = Field(min_length=1, description="Project scope/description")
     price: float = Field(ge=0, description="Project price")
-    service_id: str | None = Field(default=None, description="Optional service template reference")
+    service_id: str = Field(..., description="Service template reference (required)")
 
 
 class CreateProposalRequest(BaseModel):

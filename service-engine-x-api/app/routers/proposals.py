@@ -1025,6 +1025,128 @@ async def retrieve_proposal(
     return serialize_proposal(proposal, items)
 
 
+@router.get("/{proposal_id}/deliverables")
+async def get_proposal_deliverables(
+    proposal_id: str,
+    auth: AuthContext = Depends(get_current_org),
+) -> dict[str, Any]:
+    """
+    Get what was purchased from a signed proposal.
+
+    Returns the projects (deliverables) created from this proposal,
+    with their linked service details. Only works for signed proposals.
+
+    Response includes:
+    - proposal: Basic proposal info
+    - engagement: The engagement container
+    - projects: List of projects with service details
+    - order: Financial record
+    """
+    supabase = get_supabase()
+
+    # Fetch proposal
+    result = supabase.table("proposals").select(
+        "*, proposal_items (*)"
+    ).eq("id", proposal_id).eq("org_id", auth.org_id).is_("deleted_at", "null").execute()
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    proposal = result.data[0]
+    items = proposal.get("proposal_items") or []
+
+    # Must be signed
+    if proposal["status"] != 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Proposal is not signed. Deliverables are only available after signing.",
+        )
+
+    engagement_id = proposal.get("converted_engagement_id")
+    order_id = proposal.get("converted_order_id")
+
+    if not engagement_id:
+        raise HTTPException(
+            status_code=500,
+            detail="Signed proposal is missing engagement reference.",
+        )
+
+    # Fetch engagement
+    engagement_result = supabase.table("engagements").select("*").eq(
+        "id", engagement_id
+    ).execute()
+
+    engagement = engagement_result.data[0] if engagement_result.data else None
+
+    # Fetch projects with service details
+    projects_result = supabase.table("projects").select(
+        "*, services:service_id (id, name, description, price, recurring)"
+    ).eq("engagement_id", engagement_id).is_("deleted_at", "null").order(
+        "created_at", desc=False
+    ).execute()
+
+    projects = projects_result.data or []
+
+    # Fetch order if exists
+    order = None
+    if order_id:
+        order_result = supabase.table("orders").select("*").eq("id", order_id).execute()
+        if order_result.data:
+            order = order_result.data[0]
+
+    # Build response
+    client_name = f"{proposal.get('client_name_f', '')} {proposal.get('client_name_l', '')}".strip()
+
+    return {
+        "proposal": {
+            "id": proposal["id"],
+            "account_name": proposal.get("client_company"),
+            "contact_name": client_name,
+            "contact_email": proposal.get("client_email"),
+            "total": format_currency(proposal.get("total")),
+            "signed_at": proposal.get("signed_at"),
+            "notes": proposal.get("notes"),
+        },
+        "engagement": {
+            "id": engagement["id"],
+            "name": engagement["name"],
+            "status": "Active" if engagement["status"] == 1 else "Paused" if engagement["status"] == 2 else "Closed",
+            "status_id": engagement["status"],
+            "created_at": engagement["created_at"],
+        } if engagement else None,
+        "projects": [
+            {
+                "id": p["id"],
+                "name": p["name"],
+                "description": p.get("description"),
+                "status": "Active" if p["status"] == 1 else "Paused" if p["status"] == 2 else "Completed" if p["status"] == 3 else "Cancelled",
+                "status_id": p["status"],
+                "phase": {1: "Kickoff", 2: "Setup", 3: "Build", 4: "Testing", 5: "Deployment", 6: "Handoff"}.get(p.get("phase", 1), "Kickoff"),
+                "phase_id": p.get("phase", 1),
+                "service": {
+                    "id": p["services"]["id"],
+                    "name": p["services"]["name"],
+                    "description": p["services"].get("description"),
+                    "price": format_currency(p["services"].get("price")),
+                    "recurring": p["services"].get("recurring", 0),
+                } if p.get("services") else None,
+                "created_at": p["created_at"],
+            }
+            for p in projects
+        ],
+        "order": {
+            "id": order["id"],
+            "number": order["number"],
+            "price": format_currency(order.get("price")),
+            "currency": order.get("currency", "USD"),
+            "status": ORDER_STATUS_MAP.get(order.get("status", 0), "Unknown"),
+            "status_id": order.get("status", 0),
+            "paid_at": order.get("paid_at"),
+            "created_at": order["created_at"],
+        } if order else None,
+    }
+
+
 @router.post("/{proposal_id}/send", response_model=ProposalResponse)
 async def send_proposal(
     proposal_id: str,
