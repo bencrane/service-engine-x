@@ -26,8 +26,6 @@ from app.routers import (
     projects_router,
     conversations_router,
     internal_router,
-    systems_router,
-    public_systems_router,
     accounts_router,
     contacts_router,
 )
@@ -173,8 +171,6 @@ app.include_router(engagements_router)
 app.include_router(projects_router)
 app.include_router(conversations_router)
 app.include_router(internal_router)  # Internal admin API
-app.include_router(systems_router)  # Systems (Everything Automation)
-app.include_router(public_systems_router)  # Public systems listing
 app.include_router(accounts_router)  # Accounts (CRM companies)
 app.include_router(contacts_router)  # Contacts (people at accounts)
 
