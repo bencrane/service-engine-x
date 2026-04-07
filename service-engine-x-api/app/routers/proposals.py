@@ -1515,11 +1515,11 @@ async def get_public_proposal(proposal_id: str) -> dict[str, Any]:
         upper_prefix = prefix[:-1] + hex(int(prefix[-1], 16) + 1)[2:]
         uuid_upper = f"{upper_prefix}-0000-0000-0000-000000000000"
         result = supabase.table("proposals").select(
-            "*, proposal_items (*), organizations:org_id (name)"
+            "*, proposal_items (*), organizations:org_id (name, slug, domain, stripe_publishable_key)"
         ).gte("id", uuid_lower).lt("id", uuid_upper).is_("deleted_at", "null").execute()
     else:
         result = supabase.table("proposals").select(
-            "*, proposal_items (*), organizations:org_id (name)"
+            "*, proposal_items (*), organizations:org_id (name, slug, domain, stripe_publishable_key)"
         ).eq("id", proposal_id).is_("deleted_at", "null").execute()
 
     if not result.data:
@@ -1540,6 +1540,9 @@ async def get_public_proposal(proposal_id: str) -> dict[str, Any]:
     return {
         "id": proposal["id"],
         "org_name": org.get("name", ""),
+        "org_slug": org.get("slug", ""),
+        "org_domain": org.get("domain", ""),
+        "stripe_publishable_key": org.get("stripe_publishable_key"),
         "contact_name": f"{proposal.get('client_name_f', '')} {proposal.get('client_name_l', '')}".strip(),
         "account_name": proposal.get("client_company"),
         "contact_email": proposal.get("client_email"),
@@ -1560,6 +1563,117 @@ async def get_public_proposal(proposal_id: str) -> dict[str, Any]:
             }
             for item in items
         ],
+    }
+
+
+@public_router.post("/{proposal_id}/checkout")
+async def public_create_checkout(proposal_id: str) -> dict[str, Any]:
+    """
+    Create a Stripe Checkout session for a proposal.
+
+    No authentication required. Looks up the proposal and org's Stripe key,
+    builds line items from proposal_items, and returns a checkout URL.
+    """
+    supabase = get_supabase()
+
+    # Fetch proposal with items and org Stripe config
+    result = supabase.table("proposals").select(
+        "*, proposal_items (*), organizations:org_id (stripe_secret_key, domain)"
+    ).eq("id", proposal_id).is_("deleted_at", "null").execute()
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+
+    proposal = result.data[0]
+    items = proposal.get("proposal_items") or []
+    org = proposal.get("organizations") or {}
+
+    stripe_key = org.get("stripe_secret_key")
+    org_domain = org.get("domain")
+
+    if not stripe_key:
+        raise HTTPException(status_code=400, detail="Organization has no Stripe key configured")
+
+    if not items:
+        raise HTTPException(status_code=400, detail="Proposal has no items")
+
+    # Build Stripe line items from proposal items
+    stripe_line_items = build_line_items_from_proposal(items)
+
+    # Build redirect URLs
+    success_url = f"https://{org_domain}?payment=success&proposal_id={proposal_id}" if org_domain else f"https://example.com?payment=success&proposal_id={proposal_id}"
+    cancel_url = f"https://{org_domain}?payment=cancelled&proposal_id={proposal_id}" if org_domain else f"https://example.com?payment=cancelled&proposal_id={proposal_id}"
+
+    checkout_result = create_checkout_session(
+        api_key=stripe_key,
+        line_items=stripe_line_items,
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={
+            "org_id": proposal["org_id"],
+            "proposal_id": proposal_id,
+        },
+        customer_email=proposal.get("client_email"),
+    )
+
+    return {
+        "checkout_url": checkout_result["checkout_url"],
+        "session_id": checkout_result["session_id"],
+    }
+
+
+@public_router.post("/{proposal_id}/payment-intent")
+async def public_create_payment_intent(proposal_id: str) -> dict[str, Any]:
+    """
+    Create a Stripe PaymentIntent for a proposal (for use with Stripe Elements).
+
+    No authentication required. Returns the client_secret for the frontend
+    to confirm payment via stripe.confirmPayment().
+    """
+    import stripe as stripe_lib
+
+    supabase = get_supabase()
+
+    result = supabase.table("proposals").select(
+        "*, proposal_items (*), organizations:org_id (stripe_secret_key)"
+    ).eq("id", proposal_id).is_("deleted_at", "null").execute()
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+
+    proposal = result.data[0]
+    items = proposal.get("proposal_items") or []
+    org = proposal.get("organizations") or {}
+
+    stripe_key = org.get("stripe_secret_key")
+    if not stripe_key:
+        raise HTTPException(status_code=400, detail="Organization has no Stripe key configured")
+
+    if not items:
+        raise HTTPException(status_code=400, detail="Proposal has no items")
+
+    # Calculate total in cents
+    total_cents = sum(int(float(item.get("price", 0)) * 100) for item in items)
+
+    if total_cents <= 0:
+        raise HTTPException(status_code=400, detail="Proposal total must be greater than zero")
+
+    stripe_lib.api_key = stripe_key
+
+    intent = stripe_lib.PaymentIntent.create(
+        amount=total_cents,
+        currency="usd",
+        metadata={
+            "org_id": proposal["org_id"],
+            "proposal_id": proposal_id,
+        },
+        receipt_email=proposal.get("client_email"),
+    )
+
+    return {
+        "client_secret": intent.client_secret,
+        "payment_intent_id": intent.id,
+        "amount": total_cents,
     }
 
 
@@ -1603,11 +1717,11 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
         upper_prefix = prefix[:-1] + hex(int(prefix[-1], 16) + 1)[2:]
         uuid_upper = f"{upper_prefix}-0000-0000-0000-000000000000"
         result = supabase.table("proposals").select(
-            "*, proposal_items (*), organizations:org_id (name)"
+            "*, proposal_items (*), organizations:org_id (name, slug, domain, stripe_publishable_key)"
         ).gte("id", uuid_lower).lt("id", uuid_upper).is_("deleted_at", "null").execute()
     else:
         result = supabase.table("proposals").select(
-            "*, proposal_items (*), organizations:org_id (name)"
+            "*, proposal_items (*), organizations:org_id (name, slug, domain, stripe_publishable_key)"
         ).eq("id", proposal_id).is_("deleted_at", "null").execute()
 
     if not result.data:
@@ -2019,10 +2133,19 @@ async def stripe_webhook(request: Request) -> dict[str, str]:
 
     event_type = event_data.get("type")
 
-    # Only process checkout.session.completed events
-    if event_type != "checkout.session.completed":
+    # Route by event type
+    if event_type == "checkout.session.completed":
+        return await _handle_checkout_completed(supabase, event_data, payload, signature)
+    elif event_type == "payment_intent.succeeded":
+        return await _handle_payment_intent_succeeded(supabase, event_data, payload, signature)
+    else:
         return {"status": "ignored", "event": event_type or "unknown"}
 
+
+async def _handle_checkout_completed(
+    supabase, event_data: dict, payload: bytes, signature: str
+) -> dict[str, str]:
+    """Handle checkout.session.completed — updates order status."""
     session = event_data.get("data", {}).get("object", {})
     metadata = session.get("metadata", {})
 
@@ -2032,7 +2155,7 @@ async def stripe_webhook(request: Request) -> dict[str, str]:
     if not org_id or not order_id:
         return {"status": "ignored", "reason": "missing_metadata"}
 
-    # Fetch org's webhook secret for verification (if configured)
+    # Verify webhook signature
     org_result = supabase.table("organizations").select(
         "stripe_webhook_secret"
     ).eq("id", org_id).execute()
@@ -2040,15 +2163,11 @@ async def stripe_webhook(request: Request) -> dict[str, str]:
     if org_result.data:
         webhook_secret = org_result.data[0].get("stripe_webhook_secret")
         if webhook_secret:
-            # Verify signature
             verified_event = verify_webhook_signature(payload, signature, webhook_secret)
             if verified_event is None:
                 raise HTTPException(status_code=400, detail="Invalid signature")
 
-    # Get payment intent ID
     payment_intent_id = session.get("payment_intent")
-
-    # Update order
     now = datetime.now(timezone.utc).isoformat()
 
     update_result = supabase.table("orders").update({
@@ -2064,4 +2183,51 @@ async def stripe_webhook(request: Request) -> dict[str, str]:
         "status": "success",
         "order_id": order_id,
         "payment_intent_id": payment_intent_id or "",
+    }
+
+
+async def _handle_payment_intent_succeeded(
+    supabase, event_data: dict, payload: bytes, signature: str
+) -> dict[str, str]:
+    """Handle payment_intent.succeeded — for Stripe Elements payments."""
+    intent = event_data.get("data", {}).get("object", {})
+    metadata = intent.get("metadata", {})
+
+    org_id = metadata.get("org_id")
+    proposal_id = metadata.get("proposal_id")
+
+    if not org_id:
+        return {"status": "ignored", "reason": "missing_org_id"}
+
+    # Verify webhook signature
+    org_result = supabase.table("organizations").select(
+        "stripe_webhook_secret"
+    ).eq("id", org_id).execute()
+
+    if org_result.data:
+        webhook_secret = org_result.data[0].get("stripe_webhook_secret")
+        if webhook_secret:
+            verified_event = verify_webhook_signature(payload, signature, webhook_secret)
+            if verified_event is None:
+                raise HTTPException(status_code=400, detail="Invalid signature")
+
+    payment_intent_id = intent.get("id")
+    amount = intent.get("amount_received", 0)
+    now = datetime.now(timezone.utc).isoformat()
+
+    # If there's an order linked via metadata, update it
+    order_id = metadata.get("order_id")
+    if order_id:
+        supabase.table("orders").update({
+            "status": 1,
+            "paid_at": now,
+            "stripe_payment_intent_id": payment_intent_id,
+        }).eq("id", order_id).eq("org_id", org_id).execute()
+
+    return {
+        "status": "success",
+        "event": "payment_intent.succeeded",
+        "payment_intent_id": payment_intent_id or "",
+        "proposal_id": proposal_id or "",
+        "amount": amount,
     }
