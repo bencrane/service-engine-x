@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 
 from app.auth import AuthContext, get_current_auth
-from app.config import get_settings
+from app.config import settings
 from app.database import get_supabase
 from app.models.conversations import (
     Attachment,
@@ -125,7 +125,7 @@ async def list_conversations(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
 
     supabase = get_supabase()
-    settings = get_settings()
+
 
     # Verify project exists and belongs to org
     project_result = (
@@ -207,7 +207,7 @@ async def list_conversations(
         for c in conversations
     ]
 
-    path = f"{settings.api_base_url}/api/projects/{project_id}/conversations"
+    path = f"{settings.API_BASE_URL}/api/projects/{project_id}/conversations"
     return build_pagination_response(serialized, total, page, limit, path)
 
 
@@ -501,7 +501,7 @@ async def list_messages(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
 
     supabase = get_supabase()
-    settings = get_settings()
+
 
     # Verify conversation exists and belongs to org and project
     conv_result = (
@@ -564,7 +564,7 @@ async def list_messages(
         for m in messages_raw
     ]
 
-    path = f"{settings.api_base_url}/api/projects/{project_id}/conversations/{conversation_id}/messages"
+    path = f"{settings.API_BASE_URL}/api/projects/{project_id}/conversations/{conversation_id}/messages"
     return build_pagination_response(serialized, total, page, limit, path)
 
 

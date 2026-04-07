@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 
 from app.auth import AuthContext, get_current_org
-from app.config import get_settings
+from app.config import settings
 from app.database import get_supabase
 from app.models.clients import (
     AddressResponse,
@@ -156,7 +156,7 @@ async def list_clients(
     Supports pagination, sorting, and filtering.
     """
     supabase = get_supabase()
-    settings = get_settings()
+
 
     # Get client role
     client_role = get_client_role(supabase)
@@ -239,7 +239,7 @@ async def list_clients(
         )
 
     # Build pagination response
-    path = f"{settings.api_base_url}/api/clients"
+    path = f"{settings.API_BASE_URL}/api/clients"
     return build_pagination_response(serialized, total, page, limit, path)
 
 

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 
 from app.auth import AuthContext, get_current_auth
-from app.config import get_settings
+from app.config import settings
 from app.database import get_supabase
 from app.models.projects import (
     EngagementSummary,
@@ -98,7 +98,7 @@ async def list_projects(
 ) -> dict[str, Any]:
     """List all projects for the authenticated organization."""
     supabase = get_supabase()
-    settings = get_settings()
+
 
     # Parse sort parameter
     sort_parts = sort.split(":")
@@ -161,7 +161,7 @@ async def list_projects(
         for p in projects
     ]
 
-    path = f"{settings.api_base_url}/api/projects"
+    path = f"{settings.API_BASE_URL}/api/projects"
     return build_pagination_response(serialized, total, page, limit, path)
 
 

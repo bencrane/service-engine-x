@@ -1,24 +1,46 @@
 [project]
 name = "service-engine-x-api"
 version = "1.0.0"
-description = "Service Engine X API - FastAPI Backend"
-requires-python = ">=3.11"
+description = "Service Engine X REST API"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.34,<1",
+    "pydantic[email]>=2.7,<3",
+    "pydantic-settings>=2.7,<3",
+    "supabase>=2.13,<3",
+    "PyJWT>=2.10,<3",
+    "python-multipart>=0.0.18",
+    "httpx>=0.28,<1",
+    "passlib[bcrypt]>=1.7.4",
+    "stripe>=7.0.0",
+    "resend>=0.7.0",
+    "email-validator>=2.0.0",
+    "requests>=2.31.0",
+    "docraptor>=2.0.0",
+]
 
-[tool.black]
-line-length = 100
-target-version = ["py311"]
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<9",
+    "pytest-asyncio>=0.25,<1",
+    "httpx>=0.28,<1",
+    "ruff>=0.9,<1",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
 
 [tool.ruff]
+target-version = "py312"
 line-length = 100
-target-version = "py311"
-select = ["E", "F", "I", "N", "W", "UP"]
-ignore = ["E501"]
 
-[tool.mypy]
-python_version = "3.11"
-strict = true
-ignore_missing_imports = true
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]

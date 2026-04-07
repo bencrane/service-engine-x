@@ -135,9 +135,7 @@ async def login(body: LoginRequest) -> LoginResponse:
         role_name = role_result.data[0]["name"]
 
     # Create JWT
-    from app.config import get_settings
-
-    settings = get_settings()
+    from app.config import settings
 
     token = create_access_token(
         user_id=user["id"],
@@ -148,7 +146,7 @@ async def login(body: LoginRequest) -> LoginResponse:
     return LoginResponse(
         token=token,
         token_type="bearer",
-        expires_in_hours=settings.jwt_expiration_hours,
+        expires_in_hours=settings.JWT_EXPIRATION_HOURS,
         user={
             "id": user["id"],
             "email": user["email"],

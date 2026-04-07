@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 
-from app.config import get_settings
+from app.config import settings
 from app.routers import (
     auth_router,
     health_router,
@@ -30,14 +30,13 @@ from app.routers import (
     contacts_router,
 )
 
-settings = get_settings()
 
 app = FastAPI(
-    title=settings.app_name,
-    version=settings.app_version,
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
     description="Service Engine X REST API",
-    docs_url="/docs" if settings.debug else None,
-    redoc_url="/redoc" if settings.debug else None,
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
 )
 
 # CORS middleware - allowed origins
@@ -181,8 +180,8 @@ def custom_openapi() -> dict:
         return app.openapi_schema
 
     openapi_schema = get_openapi(
-        title=settings.app_name,
-        version=settings.app_version,
+        title=settings.APP_NAME,
+        version=settings.APP_VERSION,
         description="Service Engine X REST API - Multi-tenant SaaS platform for service businesses",
         routes=app.routes,
     )
@@ -248,8 +247,8 @@ async def get_openapi_spec() -> dict:
 async def api_index() -> dict:
     """API index endpoint listing available resources."""
     return {
-        "name": settings.app_name,
-        "version": settings.app_version,
+        "name": settings.APP_NAME,
+        "version": settings.APP_VERSION,
         "endpoints": {
             "auth_login": "/api/auth/login",
             "auth_me": "/api/auth/me",

@@ -2,7 +2,6 @@
 
 import io
 import json
-import os
 import secrets
 import string
 from datetime import datetime, timezone
@@ -12,6 +11,7 @@ import requests
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.auth.dependencies import AuthContext, get_current_org
+from app.config import settings
 from app.database import get_supabase
 from app.utils import format_currency
 from app.utils.storage import upload_proposal_pdf
@@ -46,9 +46,8 @@ ORDER_STATUS_MAP: dict[int, str] = {
 }
 
 # DocRaptor / Documenso configuration
-DOCRAPTOR_API_KEY = os.environ.get("DOCRAPTOR_API_KEY", "oUcqyfynOYOBkEIV8_IU")
-DOCUMENSO_API_KEY = os.environ.get("DOCUMENSO_API_KEY", "api_r4fv8167lra8c3dh")
-DOCUMENSO_URL = os.environ.get("DOCUMENSO_URL", "https://app.documenso.com")
+DOCUMENSO_API_KEY = "api_r4fv8167lra8c3dh"  # Dead code - Documenso is unreachable
+DOCUMENSO_URL = "https://app.documenso.com"  # Dead code - Documenso is unreachable
 
 
 def generate_order_number() -> str:
@@ -557,7 +556,7 @@ def generate_pdf_docraptor(html_content: str, filename: str) -> bytes:
     import docraptor
 
     doc_api = docraptor.DocApi()
-    doc_api.api_client.configuration.username = DOCRAPTOR_API_KEY
+    doc_api.api_client.configuration.username = settings.DOCRAPTOR_API_KEY
 
     pdf_bytes = doc_api.create_doc({
         "test": False,  # Production mode - no watermark

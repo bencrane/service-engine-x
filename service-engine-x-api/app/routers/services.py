@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 
 from app.auth import AuthContext, get_current_org
-from app.config import get_settings
+from app.config import settings
 from app.database import get_supabase
 from app.models.services import (
     MetadataItem,
@@ -120,7 +120,7 @@ async def list_services(
     Supports pagination, sorting, and filtering.
     """
     supabase = get_supabase()
-    settings = get_settings()
+
 
     # Parse sort parameter
     sort_parts = sort.split(":")
@@ -188,7 +188,7 @@ async def list_services(
     serialized = [serialize_service(s).model_dump() for s in services]
 
     # Build pagination response
-    path = f"{settings.api_base_url}/api/services"
+    path = f"{settings.API_BASE_URL}/api/services"
     return build_pagination_response(serialized, total, page, limit, path)
 
 
