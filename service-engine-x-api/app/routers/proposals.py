@@ -6,6 +6,7 @@ import secrets
 import string
 from datetime import datetime, timezone
 from typing import Any
+from uuid import UUID
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -1489,6 +1490,61 @@ async def sign_proposal(
 public_router = APIRouter(prefix="/api/public/proposals", tags=["Public Proposals"])
 
 
+def _resolve_public_proposal(
+    supabase: Any,
+    proposal_id: str,
+    select_fields: str,
+) -> dict[str, Any]:
+    """
+    Resolve a public proposal identifier to a proposal row.
+
+    Supports:
+    - Short ID: first 1-8 hex chars of UUID
+    - Full UUID
+    """
+    import re
+
+    if len(proposal_id) <= 8:
+        if not re.fullmatch(r"[0-9a-fA-F]{1,8}", proposal_id):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid proposal_id. Use a UUID or 1-8 hex characters.",
+            )
+
+        prefix_value = int(proposal_id, 16)
+        lower_prefix = f"{prefix_value:08x}"
+        uuid_lower = f"{lower_prefix}-0000-0000-0000-000000000000"
+
+        query = supabase.table("proposals").select(select_fields).gte("id", uuid_lower)
+        if prefix_value < 0xFFFFFFFF:
+            upper_prefix = f"{prefix_value + 1:08x}"
+            uuid_upper = f"{upper_prefix}-0000-0000-0000-000000000000"
+            query = query.lt("id", uuid_upper)
+
+        result = query.is_("deleted_at", "null").execute()
+    else:
+        try:
+            normalized_uuid = str(UUID(proposal_id))
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid proposal_id. Use a UUID or 1-8 hex characters.",
+            ) from None
+
+        result = (
+            supabase.table("proposals")
+            .select(select_fields)
+            .eq("id", normalized_uuid)
+            .is_("deleted_at", "null")
+            .execute()
+        )
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+
+    return result.data[0]
+
+
 @public_router.get("/{proposal_id}")
 async def get_public_proposal(proposal_id: str) -> dict[str, Any]:
     """
@@ -1500,31 +1556,11 @@ async def get_public_proposal(proposal_id: str) -> dict[str, Any]:
     """
     supabase = get_supabase()
 
-    # Support short IDs (first 8 chars of UUID) or full UUID.
-    # Validate that the input is valid hex characters
-    import re
-    if not re.match(r'^[0-9a-fA-F-]+$', proposal_id):
-        raise HTTPException(status_code=404, detail="Proposal not found")
-
-    if len(proposal_id) <= 8:
-        # Pad to 8 chars and build UUID lower/upper bounds
-        prefix = proposal_id.lower().ljust(8, "0")
-        uuid_lower = f"{prefix}-0000-0000-0000-000000000000"
-        # Increment last hex char for upper bound
-        upper_prefix = prefix[:-1] + hex(int(prefix[-1], 16) + 1)[2:]
-        uuid_upper = f"{upper_prefix}-0000-0000-0000-000000000000"
-        result = supabase.table("proposals").select(
-            "*, proposal_items (*), organizations:org_id (name, slug, domain, stripe_publishable_key)"
-        ).gte("id", uuid_lower).lt("id", uuid_upper).is_("deleted_at", "null").execute()
-    else:
-        result = supabase.table("proposals").select(
-            "*, proposal_items (*), organizations:org_id (name, slug, domain, stripe_publishable_key)"
-        ).eq("id", proposal_id).is_("deleted_at", "null").execute()
-
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Proposal not found")
-
-    proposal = result.data[0]
+    proposal = _resolve_public_proposal(
+        supabase=supabase,
+        proposal_id=proposal_id,
+        select_fields="*, proposal_items (*), organizations:org_id (name, slug, domain, stripe_publishable_key)",
+    )
 
     # Only allow viewing if proposal has been sent
     if proposal["status"] < 1:
@@ -1575,15 +1611,11 @@ async def public_create_checkout(proposal_id: str) -> dict[str, Any]:
     """
     supabase = get_supabase()
 
-    # Fetch proposal with items and org Stripe config
-    result = supabase.table("proposals").select(
-        "*, proposal_items (*), organizations:org_id (stripe_secret_key, domain)"
-    ).eq("id", proposal_id).is_("deleted_at", "null").execute()
-
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Proposal not found")
-
-    proposal = result.data[0]
+    proposal = _resolve_public_proposal(
+        supabase=supabase,
+        proposal_id=proposal_id,
+        select_fields="*, proposal_items (*), organizations:org_id (stripe_secret_key, domain)",
+    )
     items = proposal.get("proposal_items") or []
     org = proposal.get("organizations") or {}
 
@@ -1610,7 +1642,7 @@ async def public_create_checkout(proposal_id: str) -> dict[str, Any]:
         cancel_url=cancel_url,
         metadata={
             "org_id": proposal["org_id"],
-            "proposal_id": proposal_id,
+            "proposal_id": proposal["id"],
         },
         customer_email=proposal.get("client_email"),
     )
@@ -1633,14 +1665,11 @@ async def public_create_payment_intent(proposal_id: str) -> dict[str, Any]:
 
     supabase = get_supabase()
 
-    result = supabase.table("proposals").select(
-        "*, proposal_items (*), organizations:org_id (stripe_secret_key)"
-    ).eq("id", proposal_id).is_("deleted_at", "null").execute()
-
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Proposal not found")
-
-    proposal = result.data[0]
+    proposal = _resolve_public_proposal(
+        supabase=supabase,
+        proposal_id=proposal_id,
+        select_fields="*, proposal_items (*), organizations:org_id (stripe_secret_key)",
+    )
     items = proposal.get("proposal_items") or []
     org = proposal.get("organizations") or {}
 
@@ -1664,7 +1693,7 @@ async def public_create_payment_intent(proposal_id: str) -> dict[str, Any]:
         currency="usd",
         metadata={
             "org_id": proposal["org_id"],
-            "proposal_id": proposal_id,
+            "proposal_id": proposal["id"],
         },
         receipt_email=proposal.get("client_email"),
     )
@@ -1705,28 +1734,11 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
     if not signature_data:
         raise HTTPException(status_code=400, detail="Signature is required")
 
-    # Resolve proposal (supports short ID)
-    import re
-    if not re.match(r'^[0-9a-fA-F-]+$', proposal_id):
-        raise HTTPException(status_code=404, detail="Proposal not found")
-
-    if len(proposal_id) <= 8:
-        prefix = proposal_id.lower().ljust(8, "0")
-        uuid_lower = f"{prefix}-0000-0000-0000-000000000000"
-        upper_prefix = prefix[:-1] + hex(int(prefix[-1], 16) + 1)[2:]
-        uuid_upper = f"{upper_prefix}-0000-0000-0000-000000000000"
-        result = supabase.table("proposals").select(
-            "*, proposal_items (*), organizations:org_id (name, slug, domain, stripe_publishable_key)"
-        ).gte("id", uuid_lower).lt("id", uuid_upper).is_("deleted_at", "null").execute()
-    else:
-        result = supabase.table("proposals").select(
-            "*, proposal_items (*), organizations:org_id (name, slug, domain, stripe_publishable_key)"
-        ).eq("id", proposal_id).is_("deleted_at", "null").execute()
-
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Proposal not found")
-
-    proposal = result.data[0]
+    proposal = _resolve_public_proposal(
+        supabase=supabase,
+        proposal_id=proposal_id,
+        select_fields="*, proposal_items (*), organizations:org_id (name, slug, domain, stripe_publishable_key)",
+    )
     full_proposal_id = proposal["id"]
     org_id = proposal["org_id"]
     org = proposal.get("organizations") or {}
