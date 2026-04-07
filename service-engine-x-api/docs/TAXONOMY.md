@@ -1,6 +1,6 @@
 # Service Engine X: Entity Taxonomy
 
-**Last Updated:** 2026-02-22
+**Last Updated:** 2026-04-07
 **Status:** Living document
 
 This document defines every entity in the Service Engine X platform and clarifies their relationships.
@@ -34,7 +34,9 @@ This document defines every entity in the Service Engine X platform and clarifie
 - `slug` - URL-safe identifier (e.g., "revenue-activation")
 - `domain` - Primary domain (e.g., "revenueactivation.com")
 - `notification_email` - Where to send system notifications
-- `stripe_secret_key` - For payment processing
+- `stripe_secret_key` - For server-side payment processing (restricted or secret key)
+- `stripe_publishable_key` - For client-side Stripe.js / Elements initialization
+- `stripe_webhook_secret` - For verifying Stripe webhook signatures
 
 **Relationships:**
 - Owns all other entities via `org_id` foreign key
@@ -313,7 +315,8 @@ Proposal for SecurityPal AI - $13,500
 - `currency` - USD, etc.
 - `status` - Payment/delivery status
 - `paid_at` - When paid
-- `stripe_checkout_session_id` - Stripe reference
+- `stripe_checkout_session_id` - Stripe Checkout reference
+- `stripe_payment_intent_id` - Stripe PaymentIntent reference (Elements or Checkout)
 
 **Status values:**
 | ID | Status | Meaning |
@@ -363,12 +366,14 @@ Organization
 ### 1. New Client via Proposal
 
 ```
-1. Create Proposal with Items
-   └── Each Item references a Service (optional)
+1. Create Proposal with Items via POST /api/proposals
+   └── Each Item references a Service (required)
+   └── Status is set to Sent immediately (no Draft state in practice)
+   └── Email sent to client with signing link
 
-2. Send Proposal to client
+2. Client opens proposal link (GET /api/public/proposals/{id})
 
-3. Client signs Proposal
+3. Client signs Proposal (POST /api/public/proposals/{id}/sign)
    └── System creates:
        ├── Account (if new company)
        ├── Contact (if new person)
@@ -377,8 +382,12 @@ Organization
        ├── Projects (one per Item)
        └── Order (unpaid)
 
-4. Client pays via Stripe
-   └── Order status → "In Progress"
+4. Client pays via Stripe (two paths):
+   a. Stripe Elements: POST /api/public/proposals/{id}/payment-intent
+      └── Frontend confirms via stripe.confirmPayment()
+   b. Stripe Checkout: POST /api/public/proposals/{id}/checkout
+      └── Redirects to Stripe-hosted page
+   └── Webhook updates Order status → "In Progress"
 
 5. Work proceeds through Project phases
    └── Kickoff → Setup → Build → Testing → Deployment → Handoff

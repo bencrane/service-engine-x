@@ -1,6 +1,6 @@
 # Service-Engine-X Infrastructure & Technology Stack
 
-**Last Updated:** 2026-02-16
+**Last Updated:** 2026-04-07
 
 ---
 
@@ -178,11 +178,12 @@ See [MULTI-TENANT-ARCHITECTURE.md](./MULTI-TENANT-ARCHITECTURE.md) for complete 
 
 | Service | Purpose | Configuration |
 |---------|---------|---------------|
-| **Stripe** | Payment processing | `STRIPE_SECRET_KEY` |
+| **Stripe** | Payment processing (Checkout + Elements) | Per-org keys in `organizations` table |
 | **Resend** | Transactional email | `RESEND_API_KEY` |
-| **DocRaptor** | HTML to PDF conversion | `DOCRAPTOR_API_KEY` |
-| **Documenso** | E-signatures | `DOCUMENSO_API_KEY`, `DOCUMENSO_URL` |
+| **DocRaptor** | HTML to PDF conversion (signed PDFs) | `DOCRAPTOR_API_KEY` |
 | **Cal.com** | Scheduling/booking | Webhook integration |
+
+> **Note:** Documenso (e-signatures) code exists in the codebase but is dead — the only code path that calls it is unreachable. Stripe keys are stored **per-org** in the `organizations` table, not as app-level env vars.
 
 ---
 
@@ -200,11 +201,10 @@ API_BASE_URL=https://api.serviceengine.xyz
 DEBUG=false
 
 # Third-Party Services
-STRIPE_SECRET_KEY=sk_live_...
 RESEND_API_KEY=re_...
 DOCRAPTOR_API_KEY=...
-DOCUMENSO_API_KEY=api_...
-DOCUMENSO_URL=https://app.documenso.com
+# Note: Stripe keys are per-org, stored in organizations table (not env vars)
+# Note: Documenso env vars exist in code but integration is dead/unused
 
 # Internal Authentication
 INTERNAL_API_KEY=...
@@ -238,13 +238,13 @@ SERVICE_ENGINE_X_SUPABASE_ANON_KEY=eyJ...
 
 | Resource | Endpoints | Status |
 |----------|-----------|--------|
-| Proposals | 5+ | Active |
+| Proposals | 6 | Active |
 | Invoices | 7 | Active |
 | Engagements | CRUD | Active |
 | Accounts | CRUD | Active |
 | Contacts | CRUD | Active |
-| Public APIs | 2 | Active |
-| Webhooks | 2 | Active |
+| Public APIs | 4 | Active (GET, sign, checkout, payment-intent) |
+| Webhooks | 1 | Active (Stripe: checkout.session.completed + payment_intent.succeeded) |
 | Internal Admin | 2 | Active |
 
 ---
