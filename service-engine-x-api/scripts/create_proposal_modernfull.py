@@ -2,10 +2,7 @@
 """Create a one-off proposal for Modern Full / Uraiv."""
 
 import os
-from dotenv import load_dotenv
 from supabase import create_client
-
-load_dotenv("../.env.local")
 
 
 def main():
@@ -23,9 +20,8 @@ def main():
     NOTES = "Custom project"
 
     supabase = create_client(
-        os.environ.get("SUPABASE_URL") or os.environ["SERVICE_ENGINE_X_SUPABASE_URL"],
-        os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-        or os.environ["SERVICE_ENGINE_X_SUPABASE_SERVICE_ROLE_KEY"],
+        os.environ["SERVICE_ENGINE_X_SUPABASE_URL"],
+        os.environ["SERVICE_ENGINE_X_SUPABASE_SERVICE_ROLE_KEY"],
     )
 
     # Create proposal with status=1 (Sent) so it's viewable

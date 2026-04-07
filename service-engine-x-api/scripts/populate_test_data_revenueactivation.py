@@ -3,10 +3,7 @@
 
 import os
 from datetime import datetime, timezone
-from dotenv import load_dotenv
 from supabase import create_client
-
-load_dotenv("../.env.local")
 
 
 def main():
@@ -14,9 +11,8 @@ def main():
     ORG_ID = "11111111-1111-1111-1111-111111111111"
 
     supabase = create_client(
-        os.environ.get("SUPABASE_URL") or os.environ["SERVICE_ENGINE_X_SUPABASE_URL"],
-        os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-        or os.environ["SERVICE_ENGINE_X_SUPABASE_SERVICE_ROLE_KEY"],
+        os.environ["SERVICE_ENGINE_X_SUPABASE_URL"],
+        os.environ["SERVICE_ENGINE_X_SUPABASE_SERVICE_ROLE_KEY"],
     )
 
     now = datetime.now(timezone.utc).isoformat()

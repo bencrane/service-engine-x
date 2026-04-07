@@ -3,18 +3,14 @@
 
 import os
 from datetime import datetime, timezone
-from dotenv import load_dotenv
 from supabase import create_client
-
-# Load from parent .env.local
-load_dotenv("../.env.local")
 
 ORG_ID = "11111111-1111-1111-1111-111111111111"
 
 def main():
     supabase = create_client(
-        os.environ.get("SUPABASE_URL") or os.environ["SERVICE_ENGINE_X_SUPABASE_URL"],
-        os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ["SERVICE_ENGINE_X_SUPABASE_SERVICE_ROLE_KEY"]
+        os.environ["SERVICE_ENGINE_X_SUPABASE_URL"],
+        os.environ["SERVICE_ENGINE_X_SUPABASE_SERVICE_ROLE_KEY"]
     )
 
     # 1. Find the Acme Corp client (testclient@example.com)

@@ -6,11 +6,7 @@ import secrets
 from hashlib import sha256
 from datetime import datetime, timezone
 
-from dotenv import load_dotenv
 from supabase import create_client
-
-# Load from parent .env.local (Next.js convention)
-load_dotenv("../.env.local")
 
 # Configuration
 ORG_ID = "11111111-1111-1111-1111-111111111111"
@@ -20,8 +16,8 @@ TOKEN_NAME = "Customer Portal API Token"
 def main():
     # Connect to Supabase
     supabase = create_client(
-        os.environ.get("SUPABASE_URL") or os.environ["SERVICE_ENGINE_X_SUPABASE_URL"],
-        os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ["SERVICE_ENGINE_X_SUPABASE_SERVICE_ROLE_KEY"]
+        os.environ["SERVICE_ENGINE_X_SUPABASE_URL"],
+        os.environ["SERVICE_ENGINE_X_SUPABASE_SERVICE_ROLE_KEY"]
     )
 
     # Find user by email

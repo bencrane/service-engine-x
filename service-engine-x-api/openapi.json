@@ -104,7 +104,7 @@
           "Health"
         ],
         "summary": "Health Check",
-        "description": "Health check endpoint.\n\nReturns the API status, version, and current timestamp.",
+        "description": "Health check endpoint.",
         "operationId": "health_check_api_health_get",
         "responses": {
           "200": {
@@ -113,6 +113,54 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/live": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Liveness",
+        "description": "Liveness probe for Railway health checks.",
+        "operationId": "liveness_health_live_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Liveness Health Live Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Readiness",
+        "description": "Readiness probe.",
+        "operationId": "readiness_health_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Readiness Health Ready Get"
                 }
               }
             }
@@ -1824,13 +1872,74 @@
         }
       }
     },
+    "/api/proposals/{proposal_id}/deliverables": {
+      "get": {
+        "tags": [
+          "Proposals"
+        ],
+        "summary": "Get Proposal Deliverables",
+        "description": "Get what was purchased from a signed proposal.\n\nReturns the projects (deliverables) created from this proposal,\nwith their linked service details. Only works for signed proposals.\n\nResponse includes:\n- proposal: Basic proposal info\n- engagement: The engagement container\n- projects: List of projects with service details\n- order: Financial record",
+        "operationId": "get_proposal_deliverables_api_proposals__proposal_id__deliverables_get",
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proposal Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Proposal Deliverables Api Proposals  Proposal Id  Deliverables Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/proposals/{proposal_id}/send": {
       "post": {
         "tags": [
           "Proposals"
         ],
         "summary": "Send Proposal",
-        "description": "Send a proposal (Draft -> Sent).\n\nThis endpoint:\n1. Generates a PDF of the proposal using DocRaptor\n2. Uploads the PDF to Documenso for e-signature\n3. Stores the signing token on the proposal\n4. Updates status to Sent",
+        "description": "Send a proposal (Draft -> Sent).\n\nThis endpoint:\n1. Generates a PDF of the proposal using DocRaptor\n2. Stores the PDF in Supabase Storage\n3. Updates status to Sent",
         "operationId": "send_proposal_api_proposals__proposal_id__send_post",
         "parameters": [
           {
@@ -1950,7 +2059,7 @@
           "Public Proposals"
         ],
         "summary": "Get Public Proposal",
-        "description": "Get proposal data for public viewing/signing.\nNo authentication required - used by client-facing proposal pages.\n\nAccepts either a full UUID or the first 8 characters as a short ID.\nReturns proposal details, PDF URL, and Documenso signing token for embedding.",
+        "description": "Get proposal data for public viewing/signing.\nNo authentication required - used by client-facing proposal pages.\n\nAccepts either a full UUID or the first 8 characters as a short ID.\nReturns proposal details and PDF URL for the public proposal page.",
         "operationId": "get_public_proposal_api_public_proposals__proposal_id__get",
         "parameters": [
           {
@@ -1972,6 +2081,96 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Get Public Proposal Api Public Proposals  Proposal Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/proposals/{proposal_id}/checkout": {
+      "post": {
+        "tags": [
+          "Public Proposals"
+        ],
+        "summary": "Public Create Checkout",
+        "description": "Create a Stripe Checkout session for a proposal.\n\nNo authentication required. Looks up the proposal and org's Stripe key,\nbuilds line items from proposal_items, and returns a checkout URL.",
+        "operationId": "public_create_checkout_api_public_proposals__proposal_id__checkout_post",
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Public Create Checkout Api Public Proposals  Proposal Id  Checkout Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/proposals/{proposal_id}/payment-intent": {
+      "post": {
+        "tags": [
+          "Public Proposals"
+        ],
+        "summary": "Public Create Payment Intent",
+        "description": "Create a Stripe PaymentIntent for a proposal (for use with Stripe Elements).\n\nNo authentication required. Returns the client_secret for the frontend\nto confirm payment via stripe.confirmPayment().",
+        "operationId": "public_create_payment_intent_api_public_proposals__proposal_id__payment_intent_post",
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Public Create Payment Intent Api Public Proposals  Proposal Id  Payment Intent Post"
                 }
               }
             }
@@ -4280,14 +4479,14 @@
         }
       }
     },
-    "/internal/orgs": {
+    "/api/internal/orgs": {
       "get": {
         "tags": [
           "Internal"
         ],
         "summary": "List Organizations",
         "description": "List all organizations.",
-        "operationId": "list_organizations_internal_orgs_get",
+        "operationId": "list_organizations_api_internal_orgs_get",
         "parameters": [
           {
             "name": "x-internal-key",
@@ -4309,7 +4508,7 @@
                   "items": {
                     "$ref": "#/components/schemas/OrganizationResponse"
                   },
-                  "title": "Response List Organizations Internal Orgs Get"
+                  "title": "Response List Organizations Api Internal Orgs Get"
                 }
               }
             }
@@ -4327,14 +4526,14 @@
         }
       }
     },
-    "/internal/orgs/{org_id}/services": {
+    "/api/internal/orgs/{org_id}/services": {
       "get": {
         "tags": [
           "Internal"
         ],
         "summary": "List Services For Org",
         "description": "List services for a specific organization.",
-        "operationId": "list_services_for_org_internal_orgs__org_id__services_get",
+        "operationId": "list_services_for_org_api_internal_orgs__org_id__services_get",
         "parameters": [
           {
             "name": "org_id",
@@ -4377,7 +4576,7 @@
                   "items": {
                     "$ref": "#/components/schemas/app__routers__internal__ServiceResponse"
                   },
-                  "title": "Response List Services For Org Internal Orgs  Org Id  Services Get"
+                  "title": "Response List Services For Org Api Internal Orgs  Org Id  Services Get"
                 }
               }
             }
@@ -4395,14 +4594,14 @@
         }
       }
     },
-    "/internal/services": {
+    "/api/internal/services": {
       "post": {
         "tags": [
           "Internal"
         ],
         "summary": "Create Service",
         "description": "Create a service for any organization.",
-        "operationId": "create_service_internal_services_post",
+        "operationId": "create_service_api_internal_services_post",
         "parameters": [
           {
             "name": "x-internal-key",
@@ -4448,14 +4647,14 @@
         }
       }
     },
-    "/internal/proposals": {
+    "/api/internal/proposals": {
       "post": {
         "tags": [
           "Internal"
         ],
         "summary": "Create Proposal Internal",
         "description": "Create a proposal for any organization (internal admin use).",
-        "operationId": "create_proposal_internal_internal_proposals_post",
+        "operationId": "create_proposal_internal_api_internal_proposals_post",
         "parameters": [
           {
             "name": "x-internal-key",
@@ -4484,6 +4683,1029 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProposalResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/orgs/{org_id}/accounts": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "List Accounts For Org",
+        "description": "List accounts (companies) for an organization.",
+        "operationId": "list_accounts_for_org_api_internal_orgs__org_id__accounts_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "x-internal-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response List Accounts For Org Api Internal Orgs  Org Id  Accounts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/orgs/{org_id}/accounts/{account_id}": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Get Account For Org",
+        "description": "Get a specific account.",
+        "operationId": "get_account_for_org_api_internal_orgs__org_id__accounts__account_id__get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "x-internal-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Account For Org Api Internal Orgs  Org Id  Accounts  Account Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/orgs/{org_id}/contacts": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "List Contacts For Org",
+        "description": "List contacts (people) for an organization.",
+        "operationId": "list_contacts_for_org_api_internal_orgs__org_id__contacts_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "x-internal-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response List Contacts For Org Api Internal Orgs  Org Id  Contacts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/orgs/{org_id}/contacts/{contact_id}": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Get Contact For Org",
+        "description": "Get a specific contact.",
+        "operationId": "get_contact_for_org_api_internal_orgs__org_id__contacts__contact_id__get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "contact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Contact Id"
+            }
+          },
+          {
+            "name": "x-internal-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Contact For Org Api Internal Orgs  Org Id  Contacts  Contact Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/orgs/{org_id}/proposals": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "List Proposals For Org",
+        "description": "List proposals for an organization.",
+        "operationId": "list_proposals_for_org_api_internal_orgs__org_id__proposals_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "0=Draft, 1=Sent, 2=Signed, 3=Rejected",
+              "title": "Status"
+            },
+            "description": "0=Draft, 1=Sent, 2=Signed, 3=Rejected"
+          },
+          {
+            "name": "x-internal-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response List Proposals For Org Api Internal Orgs  Org Id  Proposals Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/orgs/{org_id}/proposals/{proposal_id}": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Get Proposal For Org",
+        "description": "Get a specific proposal with items.",
+        "operationId": "get_proposal_for_org_api_internal_orgs__org_id__proposals__proposal_id__get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proposal Id"
+            }
+          },
+          {
+            "name": "x-internal-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Proposal For Org Api Internal Orgs  Org Id  Proposals  Proposal Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/orgs/{org_id}/proposals/{proposal_id}/deliverables": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Get Proposal Deliverables For Org",
+        "description": "Get deliverables (projects with service details) for a signed proposal.\n\nReturns the projects created from this proposal with their linked service info.",
+        "operationId": "get_proposal_deliverables_for_org_api_internal_orgs__org_id__proposals__proposal_id__deliverables_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proposal Id"
+            }
+          },
+          {
+            "name": "x-internal-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Proposal Deliverables For Org Api Internal Orgs  Org Id  Proposals  Proposal Id  Deliverables Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/orgs/{org_id}/engagements": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "List Engagements For Org",
+        "description": "List engagements for an organization.",
+        "operationId": "list_engagements_for_org_api_internal_orgs__org_id__engagements_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "1=Active, 2=Paused, 3=Closed",
+              "title": "Status"
+            },
+            "description": "1=Active, 2=Paused, 3=Closed"
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "x-internal-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response List Engagements For Org Api Internal Orgs  Org Id  Engagements Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/orgs/{org_id}/engagements/{engagement_id}": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Get Engagement For Org",
+        "description": "Get a specific engagement with projects.",
+        "operationId": "get_engagement_for_org_api_internal_orgs__org_id__engagements__engagement_id__get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "engagement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Engagement Id"
+            }
+          },
+          {
+            "name": "x-internal-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Engagement For Org Api Internal Orgs  Org Id  Engagements  Engagement Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/orgs/{org_id}/projects": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "List Projects For Org",
+        "description": "List projects for an organization.",
+        "operationId": "list_projects_for_org_api_internal_orgs__org_id__projects_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "1=Active, 2=Paused, 3=Completed, 4=Cancelled",
+              "title": "Status"
+            },
+            "description": "1=Active, 2=Paused, 3=Completed, 4=Cancelled"
+          },
+          {
+            "name": "engagement_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Engagement Id"
+            }
+          },
+          {
+            "name": "x-internal-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response List Projects For Org Api Internal Orgs  Org Id  Projects Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/orgs/{org_id}/projects/{project_id}": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Get Project For Org",
+        "description": "Get a specific project.",
+        "operationId": "get_project_for_org_api_internal_orgs__org_id__projects__project_id__get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "x-internal-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Project For Org Api Internal Orgs  Org Id  Projects  Project Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/orgs/{org_id}/orders": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "List Orders For Org",
+        "description": "List orders for an organization.",
+        "operationId": "list_orders_for_org_api_internal_orgs__org_id__orders_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "0=Unpaid, 1=In Progress, 2=Completed, 3=Cancelled, 4=On Hold",
+              "title": "Status"
+            },
+            "description": "0=Unpaid, 1=In Progress, 2=Completed, 3=Cancelled, 4=On Hold"
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "x-internal-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response List Orders For Org Api Internal Orgs  Org Id  Orders Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/orgs/{org_id}/orders/{order_id}": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Get Order For Org",
+        "description": "Get a specific order.",
+        "operationId": "get_order_for_org_api_internal_orgs__org_id__orders__order_id__get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          },
+          {
+            "name": "x-internal-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Internal-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Order For Org Api Internal Orgs  Org Id  Orders  Order Id  Get"
                 }
               }
             }
@@ -10840,23 +12062,17 @@
             "description": "Project price"
           },
           "service_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
             "title": "Service Id",
-            "description": "Optional service template reference"
+            "description": "Service template reference (required)"
           }
         },
         "type": "object",
         "required": [
           "name",
           "description",
-          "price"
+          "price",
+          "service_id"
         ],
         "title": "ProposalItemInput",
         "description": "Input schema for proposal item (defines a project to be created)."

@@ -120,7 +120,7 @@ app.include_router(order_tasks_router)
 app.include_router(order_messages_router)
 app.include_router(proposals_router)
 app.include_router(public_proposals_router)  # Public proposal viewing (no auth)
-app.include_router(webhooks_router)  # Documenso webhooks
+app.include_router(webhooks_router)  # Stripe webhooks
 app.include_router(invoices_router)
 app.include_router(tickets_router)
 app.include_router(engagements_router)

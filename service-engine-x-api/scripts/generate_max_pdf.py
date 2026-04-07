@@ -2,11 +2,8 @@
 """Generate pre-filled PDF for Max Hirsch proposal."""
 
 import os
-from dotenv import load_dotenv
 import docraptor
 from supabase import create_client
-
-load_dotenv("../.env.local")
 
 # Max's details
 FIRST_NAME = "Max"
@@ -169,13 +166,10 @@ HTML_CONTENT = f"""<!DOCTYPE html>
 
 
 def main():
-    # DocRaptor API key
-    docraptor_key = os.environ.get("DOCRAPTOR_API_KEY", "oUcqyfynOYOBkEIV8_IU")
-
     print("Generating PDF with DocRaptor...")
 
     doc_api = docraptor.DocApi()
-    doc_api.api_client.configuration.username = docraptor_key
+    doc_api.api_client.configuration.username = os.environ["DOCRAPTOR_API_KEY"]
 
     try:
         pdf_bytes = doc_api.create_doc({
@@ -193,8 +187,8 @@ def main():
     print("Uploading to Supabase Storage...")
 
     supabase = create_client(
-        os.environ.get("SUPABASE_URL") or os.environ["SERVICE_ENGINE_X_SUPABASE_URL"],
-        os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ["SERVICE_ENGINE_X_SUPABASE_SERVICE_ROLE_KEY"],
+        os.environ["SERVICE_ENGINE_X_SUPABASE_URL"],
+        os.environ["SERVICE_ENGINE_X_SUPABASE_SERVICE_ROLE_KEY"],
     )
 
     storage_path = f"{ORG_ID}/{PROPOSAL_ID}.pdf"

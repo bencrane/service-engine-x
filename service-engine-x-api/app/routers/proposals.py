@@ -1,6 +1,5 @@
 """Proposals API router."""
 
-import io
 import json
 import secrets
 import string
@@ -8,7 +7,6 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-import requests
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.auth.dependencies import AuthContext, get_current_org
@@ -45,11 +43,6 @@ ORDER_STATUS_MAP: dict[int, str] = {
     3: "Cancelled",
     4: "On Hold",
 }
-
-# DocRaptor / Documenso configuration
-DOCUMENSO_API_KEY = "api_r4fv8167lra8c3dh"  # Dead code - Documenso is unreachable
-DOCUMENSO_URL = "https://app.documenso.com"  # Dead code - Documenso is unreachable
-
 
 def generate_order_number() -> str:
     """Generate an 8-character alphanumeric order number."""
@@ -568,152 +561,6 @@ def generate_pdf_docraptor(html_content: str, filename: str) -> bytes:
     return pdf_bytes
 
 
-def upload_to_documenso(
-    pdf_bytes: bytes,
-    filename: str,
-    recipient_name: str,
-    recipient_email: str,
-    title: str,
-) -> dict[str, Any]:
-    """
-    Upload PDF to Documenso v2 and create a signing document.
-
-    Flow:
-        1. POST /document/create  — upload PDF, get document_id
-        2. POST /document/recipient/create — add signer, get recipient_id + token
-        3. POST /document/field/create — add signature field on page 1
-        4. POST /document/distribute — activate (distributionMethod=NONE, no email)
-
-    Returns dict with document_id and signing_token.
-    """
-    documenso_base = DOCUMENSO_URL.rstrip("/")
-    headers_json = {
-        "Authorization": DOCUMENSO_API_KEY,
-        "Content-Type": "application/json",
-    }
-
-    # -----------------------------------------------------------------------
-    # 1. Create document (multipart — upload the PDF)
-    # -----------------------------------------------------------------------
-    create_resp = requests.post(
-        f"{documenso_base}/api/v2/document/create",
-        headers={"Authorization": DOCUMENSO_API_KEY},
-        files={"file": (filename, io.BytesIO(pdf_bytes), "application/pdf")},
-        data={"payload": json.dumps({"title": title})},
-        timeout=30,
-    )
-
-    if not create_resp.ok:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Documenso document create failed: {create_resp.status_code} - {create_resp.text[:200]}",
-        )
-
-    doc_data = create_resp.json()
-    document_id = doc_data.get("id") or doc_data.get("documentId")
-
-    if not document_id:
-        raise HTTPException(
-            status_code=500,
-            detail="Documenso returned no document ID",
-        )
-
-    # -----------------------------------------------------------------------
-    # 2. Create recipient (signer)
-    # -----------------------------------------------------------------------
-    recipient_resp = requests.post(
-        f"{documenso_base}/api/v2/document/recipient/create",
-        headers=headers_json,
-        json={
-            "documentId": document_id,
-            "recipient": {
-                "email": recipient_email,
-                "name": recipient_name,
-                "role": "SIGNER",
-            },
-        },
-        timeout=30,
-    )
-
-    if not recipient_resp.ok:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Documenso recipient create failed: {recipient_resp.status_code} - {recipient_resp.text[:200]}",
-        )
-
-    recipient_data = recipient_resp.json()
-    recipient_id = recipient_data.get("id")
-    signing_token = recipient_data.get("token")
-
-    # -----------------------------------------------------------------------
-    # 3. Add signature field on page 1
-    # -----------------------------------------------------------------------
-    if recipient_id:
-        field_resp = requests.post(
-            f"{documenso_base}/api/v2/document/field/create",
-            headers=headers_json,
-            json={
-                "documentId": document_id,
-                "field": {
-                    "type": "SIGNATURE",
-                    "recipientId": recipient_id,
-                    "pageNumber": 1,
-                    "pageX": 100,
-                    "pageY": 650,
-                    "width": 200,
-                    "height": 60,
-                },
-            },
-            timeout=30,
-        )
-
-        if not field_resp.ok:
-            # Non-fatal — document still usable, just won't have pre-placed field
-            pass
-
-    # -----------------------------------------------------------------------
-    # 4. Distribute (activate) — no email, we send the link ourselves
-    # -----------------------------------------------------------------------
-    dist_resp = requests.post(
-        f"{documenso_base}/api/v2/document/distribute",
-        headers=headers_json,
-        json={
-            "documentId": document_id,
-            "meta": {
-                "distributionMethod": "NONE",
-            },
-        },
-        timeout=30,
-    )
-
-    # If distribute fails, try without meta (fallback for API compatibility)
-    if not dist_resp.ok:
-        requests.post(
-            f"{documenso_base}/api/v2/document/distribute",
-            headers=headers_json,
-            json={"documentId": document_id},
-            timeout=30,
-        )
-
-    # If we didn't get a token from recipient create, fetch the document to get it
-    if not signing_token:
-        get_resp = requests.get(
-            f"{documenso_base}/api/v2/document/{document_id}",
-            headers={"Authorization": DOCUMENSO_API_KEY},
-            timeout=30,
-        )
-        if get_resp.ok:
-            doc_detail = get_resp.json()
-            recipients = doc_detail.get("recipients", [])
-            if recipients:
-                signing_token = recipients[0].get("token")
-
-    return {
-        "document_id": str(document_id),
-        "signing_token": signing_token or "",
-    }
-
-
 def serialize_proposal_list_item(proposal: dict[str, Any]) -> ProposalListItem:
     """Serialize a proposal for list response (without items)."""
     status_id = proposal.get("status", 0)
@@ -1157,9 +1004,8 @@ async def send_proposal(
 
     This endpoint:
     1. Generates a PDF of the proposal using DocRaptor
-    2. Uploads the PDF to Documenso for e-signature
-    3. Stores the signing token on the proposal
-    4. Updates status to Sent
+    2. Stores the PDF in Supabase Storage
+    3. Updates status to Sent
     """
     supabase = get_supabase()
 
@@ -1210,27 +1056,7 @@ async def send_proposal(
             detail=f"Failed to store PDF: {str(e)}",
         )
 
-    # Upload to Documenso for signature capture
-    client_email = proposal.get("client_email", "")
-    title = f"Proposal - {proposal.get('client_company') or client_name}"
-
-    try:
-        documenso_result = upload_to_documenso(
-            pdf_bytes=pdf_bytes,
-            filename=filename,
-            recipient_name=client_name,
-            recipient_email=client_email,
-            title=title,
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to upload to Documenso: {str(e)}",
-        )
-
-    # Update proposal with PDF URL, Documenso info, and status
+    # Update proposal with PDF URL and status
     now = datetime.now(timezone.utc).isoformat()
 
     supabase.table("proposals").update({
@@ -1238,8 +1064,6 @@ async def send_proposal(
         "sent_at": now,
         "updated_at": now,
         "pdf_url": pdf_url,
-        "documenso_document_id": documenso_result["document_id"],
-        "documenso_signing_token": documenso_result["signing_token"],
     }).eq("id", proposal_id).execute()
 
     # Update local proposal dict for response
@@ -1247,8 +1071,6 @@ async def send_proposal(
     proposal["sent_at"] = now
     proposal["updated_at"] = now
     proposal["pdf_url"] = pdf_url
-    proposal["documenso_document_id"] = documenso_result["document_id"]
-    proposal["documenso_signing_token"] = documenso_result["signing_token"]
 
     return serialize_proposal(proposal, items)
 
@@ -1552,7 +1374,7 @@ async def get_public_proposal(proposal_id: str) -> dict[str, Any]:
     No authentication required - used by client-facing proposal pages.
 
     Accepts either a full UUID or the first 8 characters as a short ID.
-    Returns proposal details, PDF URL, and Documenso signing token for embedding.
+    Returns proposal details and PDF URL for the public proposal page.
     """
     supabase = get_supabase()
 
