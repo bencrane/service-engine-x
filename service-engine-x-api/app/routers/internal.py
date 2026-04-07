@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from app.config import get_settings
+from app.config import settings
 from app.database import get_supabase
 
 # Signing URL base (where clients view/sign proposals)
@@ -24,13 +24,12 @@ router = APIRouter(prefix="/api/internal", tags=["Internal"])
 
 async def verify_internal_key(x_internal_key: str = Header(...)) -> None:
     """Verify internal API key."""
-    settings = get_settings()
-    if not settings.internal_api_key:
+    if not settings.INTERNAL_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Internal API not configured",
         )
-    if x_internal_key != settings.internal_api_key:
+    if x_internal_key != settings.INTERNAL_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid internal API key",

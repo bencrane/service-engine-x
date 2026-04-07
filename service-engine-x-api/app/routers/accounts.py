@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 
 from app.auth import AuthContext, get_current_auth
-from app.config import get_settings
+from app.config import settings
 from app.database import get_supabase
 from app.models.accounts import (
     VALID_LIFECYCLES,
@@ -103,7 +103,7 @@ async def list_accounts(
 ) -> dict[str, Any]:
     """List all accounts for the authenticated organization."""
     supabase = get_supabase()
-    settings = get_settings()
+
 
     # Parse sort parameter
     sort_parts = sort.split(":")
@@ -155,7 +155,7 @@ async def list_accounts(
     # Serialize
     serialized = [serialize_account_list(a).model_dump() for a in accounts]
 
-    path = f"{settings.api_base_url}/api/accounts"
+    path = f"{settings.API_BASE_URL}/api/accounts"
     return build_pagination_response(serialized, total, page, limit, path)
 
 

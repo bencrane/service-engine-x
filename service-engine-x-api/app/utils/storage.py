@@ -1,6 +1,6 @@
 """Supabase Storage utilities for file uploads."""
 
-from app.config import get_settings
+from app.config import settings
 from app.database import get_supabase
 
 PROPOSALS_BUCKET = "proposals"
@@ -14,7 +14,6 @@ def upload_proposal_pdf(org_id: str, proposal_id: str, pdf_bytes: bytes) -> str:
     Returns the public URL for the uploaded file.
     """
     supabase = get_supabase()
-    settings = get_settings()
 
     file_path = f"{org_id}/{proposal_id}.pdf"
 
@@ -32,7 +31,7 @@ def upload_proposal_pdf(org_id: str, proposal_id: str, pdf_bytes: bytes) -> str:
     )
 
     # Build the public URL
-    supabase_url = settings.service_engine_x_supabase_url.rstrip("/")
+    supabase_url = settings.SERVICE_ENGINE_X_SUPABASE_URL.rstrip("/")
     public_url = f"{supabase_url}/storage/v1/object/public/{PROPOSALS_BUCKET}/{file_path}"
 
     return public_url

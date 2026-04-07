@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 
 from app.auth import AuthContext, get_current_org
-from app.config import get_settings
+from app.config import settings
 from app.database import get_supabase
 from app.models.orders import (
     OrderClientResponse,
@@ -223,7 +223,7 @@ async def list_orders(
 ) -> dict[str, Any]:
     """List all orders for the authenticated organization."""
     supabase = get_supabase()
-    settings = get_settings()
+
 
     # Parse sort
     sort_parts = sort.split(":")
@@ -265,7 +265,7 @@ async def list_orders(
         order_resp = await serialize_order(supabase, o)
         serialized.append(order_resp.model_dump())
 
-    path = f"{settings.api_base_url}/api/orders"
+    path = f"{settings.API_BASE_URL}/api/orders"
     return build_pagination_response(serialized, total, page, limit, path)
 
 

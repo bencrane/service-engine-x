@@ -1,41 +1,28 @@
-"""Application configuration using Pydantic Settings."""
-
-from functools import lru_cache
-
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+    # Supabase
+    SERVICE_ENGINE_X_SUPABASE_URL: str
+    SERVICE_ENGINE_X_SUPABASE_SERVICE_ROLE_KEY: str
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-    )
-
-    # Supabase (matches existing env var names)
-    service_engine_x_supabase_url: str
-    service_engine_x_supabase_service_role_key: str
-
-    # JWT Authentication
-    jwt_secret_key: str = "change-me-in-production"
-    jwt_algorithm: str = "HS256"
-    jwt_expiration_hours: int = 72
+    # JWT
+    JWT_SECRET_KEY: str = "change-me-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRATION_HOURS: int = 72
 
     # API
-    api_base_url: str = "http://localhost:8000"
-    debug: bool = False
+    API_BASE_URL: str = "http://localhost:8000"
+    DEBUG: bool = False
+    APP_NAME: str = "Service Engine X API"
+    APP_VERSION: str = "1.0.0"
 
-    # App info
-    app_name: str = "Service Engine X API"
-    app_version: str = "1.0.0"
+    # Internal
+    INTERNAL_API_KEY: str = ""
 
-    # Internal API (for admin panels)
-    internal_api_key: str = ""
+    # Third-party
+    RESEND_API_KEY: str = ""
+    DOCRAPTOR_API_KEY: str = ""
 
 
-@lru_cache
-def get_settings() -> Settings:
-    """Get cached settings instance."""
-    return Settings()
+settings = Settings()  # type: ignore[call-arg]

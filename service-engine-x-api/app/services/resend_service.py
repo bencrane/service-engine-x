@@ -1,7 +1,8 @@
 """Resend email service."""
 
-import os
 from typing import Any
+
+from app.config import settings
 
 
 def send_proposal_email(
@@ -20,8 +21,7 @@ def send_proposal_email(
     If subject/body not provided, uses defaults.
     Returns the Resend response or None if sending fails.
     """
-    api_key = os.environ.get("RESEND_API_KEY")
-    if not api_key:
+    if not settings.RESEND_API_KEY:
         return None
 
     try:
@@ -29,7 +29,7 @@ def send_proposal_email(
     except ImportError:
         return None
 
-    resend.api_key = api_key
+    resend.api_key = settings.RESEND_API_KEY
 
     # Default subject
     if not subject:
@@ -94,8 +94,7 @@ def send_proposal_signed_email(
 
     Returns the Resend response or None if sending fails.
     """
-    api_key = os.environ.get("RESEND_API_KEY")
-    if not api_key:
+    if not settings.RESEND_API_KEY:
         return None
 
     try:
@@ -103,7 +102,7 @@ def send_proposal_signed_email(
     except ImportError:
         return None
 
-    resend.api_key = api_key
+    resend.api_key = settings.RESEND_API_KEY
 
     client_display = company_name or signer_name
 

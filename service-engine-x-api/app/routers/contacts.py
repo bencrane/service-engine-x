@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 
 from app.auth import AuthContext, get_current_auth
-from app.config import get_settings
+from app.config import settings
 from app.database import get_supabase
 from app.models.contacts import (
     AccountBrief,
@@ -107,7 +107,7 @@ async def list_contacts(
 ) -> dict[str, Any]:
     """List all contacts for the authenticated organization."""
     supabase = get_supabase()
-    settings = get_settings()
+
 
     # Parse sort parameter
     sort_parts = sort.split(":")
@@ -170,7 +170,7 @@ async def list_contacts(
     # Serialize
     serialized = [serialize_contact_list(c).model_dump() for c in contacts]
 
-    path = f"{settings.api_base_url}/api/contacts"
+    path = f"{settings.API_BASE_URL}/api/contacts"
     return build_pagination_response(serialized, total, page, limit, path)
 
 

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import jwt
 
-from app.config import get_settings
+from app.config import settings
 
 
 def create_access_token(user_id: str, org_id: str, role_id: str) -> str:
@@ -19,7 +19,6 @@ def create_access_token(user_id: str, org_id: str, role_id: str) -> str:
         exp: expiration
         type: "session" (distinguishes from API tokens)
     """
-    settings = get_settings()
     now = datetime.now(timezone.utc)
 
     payload = {
@@ -27,11 +26,11 @@ def create_access_token(user_id: str, org_id: str, role_id: str) -> str:
         "org_id": org_id,
         "role_id": role_id,
         "iat": now,
-        "exp": now + timedelta(hours=settings.jwt_expiration_hours),
+        "exp": now + timedelta(hours=settings.JWT_EXPIRATION_HOURS),
         "type": "session",
     }
 
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
 def decode_access_token(token: str) -> dict:
@@ -42,10 +41,8 @@ def decode_access_token(token: str) -> dict:
     Raises jwt.ExpiredSignatureError if expired.
     Raises jwt.InvalidTokenError for any other validation failure.
     """
-    settings = get_settings()
-
     return jwt.decode(
         token,
-        settings.jwt_secret_key,
-        algorithms=[settings.jwt_algorithm],
+        settings.JWT_SECRET_KEY,
+        algorithms=[settings.JWT_ALGORITHM],
     )
