@@ -1,5 +1,6 @@
 """Proposals API router."""
 
+import hashlib
 import json
 import secrets
 import string
@@ -8,6 +9,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
 
 from app.auth.dependencies import AuthContext, get_current_org
 from app.config import settings
@@ -1527,6 +1529,39 @@ async def public_create_payment_intent(proposal_id: str) -> dict[str, Any]:
     }
 
 
+@public_router.get("/{proposal_id}/signed-pdf")
+async def get_signed_pdf(proposal_id: str):
+    """
+    Download the signed PDF for a proposal.
+
+    No authentication required — public endpoint (same access model as viewing a proposal).
+    Redirects to the Supabase Storage URL for the signed PDF.
+    """
+    supabase = get_supabase()
+
+    proposal = _resolve_public_proposal(
+        supabase=supabase,
+        proposal_id=proposal_id,
+        select_fields="id, status",
+    )
+
+    if proposal["status"] != 2:
+        raise HTTPException(status_code=404, detail="Signed PDF not available")
+
+    # Look up the signature record for the PDF URL
+    sig_result = (
+        supabase.table("proposal_signatures")
+        .select("signed_pdf_url")
+        .eq("proposal_id", proposal["id"])
+        .execute()
+    )
+
+    if not sig_result.data or not sig_result.data[0].get("signed_pdf_url"):
+        raise HTTPException(status_code=404, detail="Signed PDF not found")
+
+    return RedirectResponse(url=sig_result.data[0]["signed_pdf_url"])
+
+
 @public_router.post("/{proposal_id}/sign")
 async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, Any]:
     """
@@ -1845,6 +1880,7 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
 
     # Generate signed PDF using server-side template
     signed_pdf_url = None
+    signed_pdf_hash = None
     pdf_status = None
 
     try:
@@ -1858,6 +1894,7 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
         )
         filename = f"proposal-{full_proposal_id[:8]}-signed.pdf"
         pdf_bytes = generate_pdf_docraptor(signed_html, filename)
+        signed_pdf_hash = hashlib.sha256(pdf_bytes).hexdigest()
         signed_pdf_url = upload_proposal_pdf(
             org_id, f"{full_proposal_id}-signed", pdf_bytes
         )
@@ -1868,18 +1905,36 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
         logging.error(f"PDF generation failed for proposal {full_proposal_id}: {e}")
         pdf_status = f"error: {str(e)}"
 
+    # =========================================================================
+    # INSERT PROPOSAL SIGNATURE RECORD
+    # =========================================================================
+    signature_record = {
+        "proposal_id": full_proposal_id,
+        "org_id": org_id,
+        "signer_name": signer_name,
+        "signer_email": signer_email,
+        "signature_data": signature_data,
+        "signer_ip": signer_ip,
+        "signer_user_agent": signer_user_agent,
+        "server_signed_at": now,
+        "signed_pdf_url": signed_pdf_url,
+        "signed_pdf_hash": signed_pdf_hash,
+    }
+    try:
+        supabase.table("proposal_signatures").insert(signature_record).execute()
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to insert proposal_signature for {full_proposal_id}: {e}")
+
     # Update client_email if signer provided their email
     update_data = {
         "status": 2,
         "signed_at": now,
         "updated_at": now,
-        "signature_data": signature_data,
-        "signer_ip": signer_ip,
-        "signer_user_agent": signer_user_agent,
         "signed_pdf_url": signed_pdf_url,
         "converted_order_id": order["id"],
         "converted_engagement_id": engagement["id"],
-        "account_id": account_id,  # NEW: Link to account
+        "account_id": account_id,
     }
     if signer_email:
         update_data["client_email"] = signer_email
