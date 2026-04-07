@@ -1,12 +1,72 @@
 # Service Engine X API - Change Log
 
+**Last Updated:** 2026-04-07
+
 ## Recent Updates
 
 | Date | Change | Documentation |
 |------|--------|---------------|
+| 2026-04-07 | Stripe Elements + per-org publishable key | See below |
 | 2026-02-13 | Account/Contact Model Migration | [update-accounts-contacts.md](./update-accounts-contacts.md) |
 | 2026-02-12 | Notification Email Support | See below |
 | 2026-02-11 | Stripe Checkout Integration | See below |
+
+---
+
+## 2026-04-07: Stripe Elements Support & Per-Org Publishable Key
+
+Added Stripe Elements (PaymentIntent) flow alongside existing Checkout flow. Stripe keys are per-org in the database, not app-level env vars.
+
+### Migration
+
+**`migrations/009_add_stripe_publishable_key.sql`**
+- Adds `organizations.stripe_publishable_key` column
+
+### New Endpoints
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| `POST` | `/api/public/proposals/{id}/payment-intent` | None | Create PaymentIntent for Stripe Elements |
+| `POST` | `/api/public/proposals/{id}/checkout` | None | Create Checkout session (redirect flow) |
+
+### Changes to Existing Endpoints
+
+**`GET /api/public/proposals/{id}`** — now returns `org_slug`, `org_domain`, `stripe_publishable_key`
+
+**`POST /api/webhooks/stripe`** — now handles `payment_intent.succeeded` in addition to `checkout.session.completed`
+
+### Frontend Payment Flow (Stripe Elements)
+
+```
+1. GET /api/public/proposals/{id} → get stripe_publishable_key
+2. Initialize Stripe(publishableKey), mount Payment Element
+3. POST /api/public/proposals/{id}/payment-intent → get client_secret
+4. stripe.confirmPayment({ clientSecret, elements })
+5. Webhook receives payment_intent.succeeded
+```
+
+### Key Design Decisions
+
+- **Per-org Stripe keys**: `stripe_secret_key`, `stripe_publishable_key`, `stripe_webhook_secret` all stored on `organizations` table
+- **Restricted keys supported**: `rk_live_...` keys work as drop-in replacement for `sk_live_...`
+- **Documenso is dead code**: The only code path calling Documenso (`POST /send`) requires status=0 (Draft), but Create sets status=1 (Sent) — unreachable
+
+### Setup
+
+```bash
+psql -f migrations/009_add_stripe_publishable_key.sql
+```
+
+```sql
+UPDATE organizations
+SET stripe_secret_key      = 'rk_live_...',
+    stripe_publishable_key = 'pk_live_...',
+    stripe_webhook_secret  = 'whsec_...',
+    updated_at             = now()
+WHERE slug = 'outbound-solutions';
+```
+
+Add `payment_intent.succeeded` event to your Stripe webhook destination in the Stripe dashboard.
 
 ---
 
@@ -120,7 +180,7 @@ stripe>=7.0.0
 2. Install stripe: `pip install stripe>=7.0.0`
 3. Configure Stripe webhook in dashboard:
    - URL: `https://api.serviceengine.xyz/api/webhooks/stripe`
-   - Events: `checkout.session.completed`
+   - Events: `checkout.session.completed`, `payment_intent.succeeded`
 4. Store webhook secret in `organizations.stripe_webhook_secret`
 
 ---
@@ -137,4 +197,6 @@ psql -f migrations/005_add_notification_email.sql
 psql -f migrations/006_add_accounts_contacts.sql
 # After dual-write is running:
 psql -f migrations/007_migrate_clients_to_accounts.sql
+psql -f migrations/008_drop_systems.sql
+psql -f migrations/009_add_stripe_publishable_key.sql
 ```
