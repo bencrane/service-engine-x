@@ -547,6 +547,105 @@ def generate_signed_proposal_html(
 </html>"""
 
 
+def wrap_signed_html_for_pdf(
+    signed_html: str,
+    signature_data: str,
+    signer_name: str,
+    signer_email: str | None,
+    signed_at: str,
+) -> str:
+    """Wrap frontend-rendered proposal HTML with a signature page for PDF generation."""
+    try:
+        signed_date = datetime.fromisoformat(signed_at.replace("Z", "+00:00")).strftime("%B %d, %Y")
+    except Exception:
+        signed_date = signed_at
+
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Signed Proposal</title>
+    <style>
+        @page {{
+            size: letter;
+            margin: 0.75in;
+        }}
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #111;
+        }}
+        .proposal-content {{
+            margin-bottom: 0;
+        }}
+        .signature-page {{
+            page-break-before: always;
+            padding-top: 48px;
+        }}
+        .signature-page h2 {{
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 32px;
+            color: #111;
+        }}
+        .sig-field {{
+            margin-bottom: 16px;
+        }}
+        .sig-label {{
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #888;
+            margin-bottom: 4px;
+        }}
+        .sig-value {{
+            font-size: 14px;
+            color: #111;
+        }}
+        .sig-image {{
+            margin: 24px 0;
+            max-height: 80px;
+        }}
+        .sig-notice {{
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 11px;
+            color: #888;
+        }}
+    </style>
+</head>
+<body>
+    <div class="proposal-content">
+        {signed_html}
+    </div>
+
+    <div class="signature-page">
+        <h2>Signature</h2>
+
+        <div class="sig-field">
+            <div class="sig-label">Signed By</div>
+            <div class="sig-value">{signer_name or "—"}</div>
+        </div>
+
+        {f'<div class="sig-field"><div class="sig-label">Email</div><div class="sig-value">{signer_email}</div></div>' if signer_email else ''}
+
+        <div class="sig-field">
+            <div class="sig-label">Date</div>
+            <div class="sig-value">{signed_date}</div>
+        </div>
+
+        <img class="sig-image" src="{signature_data}" alt="Signature" />
+
+        <div class="sig-notice">
+            This document was electronically signed.
+        </div>
+    </div>
+</body>
+</html>"""
+
+
 def generate_pdf_docraptor(html_content: str, filename: str) -> bytes:
     """Convert HTML to PDF using DocRaptor API."""
     import docraptor
@@ -1572,9 +1671,10 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
     Creates engagement, projects, and order on successful signing.
 
     Request body:
+        signed_html: full rendered HTML of the proposal page as the signer saw it
         signature: base64-encoded signature image (PNG data URL)
-        signer_name: full name of the signer (for verification)
-        signed_html: full HTML+CSS of the signed proposal page (frontend renders this)
+        signer_name: full name of the signer
+        signer_email: signer's email address
     """
     supabase = get_supabase()
 
@@ -1584,12 +1684,15 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid request body")
 
+    signed_html = body.get("signed_html")
     signature_data = body.get("signature")
     signer_name = body.get("signer_name")
     signer_email = body.get("signer_email")
 
     if not signature_data:
         raise HTTPException(status_code=400, detail="Signature is required")
+    if not signed_html:
+        raise HTTPException(status_code=400, detail="signed_html is required")
 
     proposal = _resolve_public_proposal(
         supabase=supabase,
@@ -1878,22 +1981,21 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
     # UPDATE PROPOSAL — mark as signed with signature proof
     # =========================================================================
 
-    # Generate signed PDF using server-side template
+    # Generate signed PDF from frontend HTML + signature page
     signed_pdf_url = None
     signed_pdf_hash = None
     pdf_status = None
 
     try:
-        # Generate HTML from proposal data (no frontend HTML needed)
-        signed_html = generate_signed_proposal_html(
-            proposal=proposal,
-            items=items,
-            org_name=org_name,
+        pdf_html = wrap_signed_html_for_pdf(
+            signed_html=signed_html,
             signature_data=signature_data,
+            signer_name=signer_name,
+            signer_email=signer_email,
             signed_at=now,
         )
         filename = f"proposal-{full_proposal_id[:8]}-signed.pdf"
-        pdf_bytes = generate_pdf_docraptor(signed_html, filename)
+        pdf_bytes = generate_pdf_docraptor(pdf_html, filename)
         signed_pdf_hash = hashlib.sha256(pdf_bytes).hexdigest()
         signed_pdf_url = upload_proposal_pdf(
             org_id, f"{full_proposal_id}-signed", pdf_bytes
@@ -1914,6 +2016,7 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
         "signer_name": signer_name,
         "signer_email": signer_email,
         "signature_data": signature_data,
+        "signed_html": signed_html,
         "signer_ip": signer_ip,
         "signer_user_agent": signer_user_agent,
         "server_signed_at": now,
