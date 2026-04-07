@@ -39,52 +39,9 @@ app = FastAPI(
     redoc_url="/redoc" if settings.DEBUG else None,
 )
 
-# CORS middleware - allowed origins
-ALLOWED_ORIGINS = [
-    # Localhost development
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:3002",
-    "http://localhost:3003",
-    "http://localhost:3004",
-    "http://localhost:3005",
-    "http://localhost:3006",
-    "http://localhost:3007",
-    "http://localhost:3008",
-    "http://localhost:3009",
-    "http://localhost:3010",
-    "http://localhost:4000",
-    "http://localhost:8000",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:3001",
-    "http://127.0.0.1:3002",
-    "http://127.0.0.1:3003",
-    "http://127.0.0.1:3004",
-    "http://127.0.0.1:3005",
-    "http://127.0.0.1:3006",
-    "http://127.0.0.1:3007",
-    "http://127.0.0.1:3008",
-    "http://127.0.0.1:3009",
-    "http://127.0.0.1:3010",
-    "http://127.0.0.1:4000",
-    "http://127.0.0.1:8000",
-    # Production — customer portals
-    "https://client.revenueactivation.com",
-    "https://revenueactivation.com",
-    "https://client.outboundsolutions.com",
-    "https://outboundsolutions.com",
-    "https://modernfull.com",
-    "https://client.modernfull.com",
-    "https://ea.systems",
-    "https://my.ea.systems",
-    "https://admin.opsinternal.com",
-    # Production — API
-    "https://api.serviceengine.xyz",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
