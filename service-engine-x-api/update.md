@@ -5,7 +5,6 @@
 | Date | Change | Documentation |
 |------|--------|---------------|
 | 2026-02-13 | Account/Contact Model Migration | [update-accounts-contacts.md](./update-accounts-contacts.md) |
-| 2026-02-12 | Systems API & Internal Admin | See below |
 | 2026-02-12 | Notification Email Support | See below |
 | 2026-02-11 | Stripe Checkout Integration | See below |
 
@@ -20,38 +19,6 @@ Implements Salesforce-style Account/Contact model to separate CRM data from auth
 - New `/api/accounts` and `/api/contacts` endpoints
 - Proposal signing now creates accounts and contacts (dual-write)
 - Engagements support both `client_id` and `account_id`
-
----
-
-## 2026-02-12: Systems API & Internal Admin
-
-Added support for "Systems" (Everything Automation integration) and internal admin endpoints.
-
-### Files Created
-
-**`migrations/005_add_systems.sql`**
-- Creates `systems` table for tracking client systems
-- Fields: name, type, org_id, user_id, metadata, status
-
-**`app/models/systems.py`**
-- Pydantic models for systems CRUD
-
-**`app/routers/systems.py`**
-- `GET /api/systems` - List systems
-- `POST /api/systems` - Create system
-- `GET /api/systems/{id}` - Retrieve system
-- `PUT /api/systems/{id}` - Update system
-- `DELETE /api/systems/{id}` - Delete system
-
-**`app/routers/internal.py`**
-- `POST /api/internal/organizations` - Create organization (admin)
-- `GET /api/internal/organizations/{slug}` - Get org by slug
-- `GET /api/public/organizations/{slug}/systems` - Public systems list
-
-### Recent Commits
-- `3e7a7c9` Add simple login endpoint for testing system access
-- `8330b65` Add public endpoint for listing systems by org slug
-- `f6eb87e` Add systems API and internal admin endpoints
 
 ---
 
@@ -167,7 +134,6 @@ psql -f migrations/002_add_engagement_model.sql
 psql -f migrations/003_conversations_project_scoped.sql
 psql -f migrations/004_add_stripe_fields.sql
 psql -f migrations/005_add_notification_email.sql
-psql -f migrations/005b_add_systems.sql
 psql -f migrations/006_add_accounts_contacts.sql
 # After dual-write is running:
 psql -f migrations/007_migrate_clients_to_accounts.sql
