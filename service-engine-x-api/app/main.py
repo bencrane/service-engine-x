@@ -28,6 +28,7 @@ from app.routers import (
     internal_router,
     accounts_router,
     contacts_router,
+    bank_details_router,
 )
 
 
@@ -129,6 +130,7 @@ app.include_router(conversations_router)
 app.include_router(internal_router)  # Internal admin API
 app.include_router(accounts_router)  # Accounts (CRM companies)
 app.include_router(contacts_router)  # Contacts (people at accounts)
+app.include_router(bank_details_router)  # Org bank details (wire/ACH)
 
 
 def custom_openapi() -> dict:
@@ -221,6 +223,7 @@ async def api_index() -> dict:
             "conversations": "/api/conversations",
             "accounts": "/api/accounts",
             "contacts": "/api/contacts",
+            "bank_details": "/api/bank-details",
             "openapi": "/api/openapi.json",
         },
     }
