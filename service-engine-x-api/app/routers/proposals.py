@@ -2029,7 +2029,7 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
         import logging
         logging.error(f"Failed to insert proposal_signature for {full_proposal_id}: {e}")
 
-    # Update client_email if signer provided their email
+    # Populate client fields from signer data only if currently empty
     update_data = {
         "status": 2,
         "signed_at": now,
@@ -2039,8 +2039,13 @@ async def public_sign_proposal(proposal_id: str, request: Request) -> dict[str, 
         "converted_engagement_id": engagement["id"],
         "account_id": account_id,
     }
-    if signer_email:
+    if signer_email and not proposal.get("client_email"):
         update_data["client_email"] = signer_email
+    if signer_name and not proposal.get("client_name_f"):
+        # Split "First Last" into first/last name
+        parts = signer_name.strip().split(None, 1)
+        update_data["client_name_f"] = parts[0]
+        update_data["client_name_l"] = parts[1] if len(parts) > 1 else ""
 
     supabase.table("proposals").update(update_data).eq("id", full_proposal_id).execute()
 
