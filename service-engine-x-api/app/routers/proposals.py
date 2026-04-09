@@ -1495,6 +1495,31 @@ async def get_public_proposal(proposal_id: str) -> dict[str, Any]:
     # Check if already signed
     is_signed = proposal["status"] == 2
 
+    # Fetch tenant org's bank details
+    bank_result = (
+        supabase.table("organization_bank_details")
+        .select("*")
+        .eq("org_id", proposal["org_id"])
+        .execute()
+    )
+    bank_row = bank_result.data[0] if bank_result.data else None
+    bank_details = None
+    if bank_row:
+        bank_details = {
+            "account_name": bank_row["account_name"],
+            "account_number": bank_row.get("account_number"),
+            "routing_number": bank_row.get("routing_number"),
+            "bank_name": bank_row.get("bank_name"),
+            "bank_address_line1": bank_row.get("bank_address_line1"),
+            "bank_address_line2": bank_row.get("bank_address_line2"),
+            "bank_city": bank_row.get("bank_city"),
+            "bank_state": bank_row.get("bank_state"),
+            "bank_postal_code": bank_row.get("bank_postal_code"),
+            "bank_country": bank_row.get("bank_country"),
+            "swift_code": bank_row.get("swift_code"),
+            "iban": bank_row.get("iban"),
+        }
+
     return {
         "id": proposal["id"],
         "org_name": org.get("name", ""),
@@ -1512,6 +1537,7 @@ async def get_public_proposal(proposal_id: str) -> dict[str, Any]:
         "signed_at": proposal.get("signed_at"),
         "is_signed": is_signed,
         "pdf_url": proposal.get("pdf_url"),
+        "bank_details": bank_details,
         "items": [
             {
                 "id": item["id"],

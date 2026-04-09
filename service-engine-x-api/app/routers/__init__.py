@@ -18,6 +18,7 @@ from app.routers.conversations import router as conversations_router
 from app.routers.internal import router as internal_router
 from app.routers.accounts import router as accounts_router
 from app.routers.contacts import router as contacts_router
+from app.routers.bank_details import router as bank_details_router
 
 __all__ = [
     "auth_router",
@@ -38,4 +39,5 @@ __all__ = [
     "internal_router",
     "accounts_router",
     "contacts_router",
+    "bank_details_router",
 ]

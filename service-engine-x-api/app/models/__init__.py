@@ -140,6 +140,11 @@ from app.models.contacts import (
     ContactListResponse,
     GrantPortalAccessRequest,
 )
+from app.models.bank_details import (
+    BankDetailsCreate,
+    BankDetailsUpdate,
+    BankDetailsResponse,
+)
 
 __all__ = [
     "ErrorResponse",
@@ -256,4 +261,8 @@ __all__ = [
     "ContactResponse",
     "ContactListResponse",
     "GrantPortalAccessRequest",
+    # Bank Details
+    "BankDetailsCreate",
+    "BankDetailsUpdate",
+    "BankDetailsResponse",
 ]
