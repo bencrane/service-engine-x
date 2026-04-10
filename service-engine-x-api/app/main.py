@@ -10,29 +10,29 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.routers import (
-    auth_router,
-    health_router,
-    clients_router,
-    services_router,
-    orders_router,
-    order_tasks_router,
-    order_messages_router,
-    proposals_router,
-    public_proposals_router,
-    webhooks_router,
-    invoices_router,
-    tickets_router,
-    engagements_router,
-    projects_router,
-    conversations_router,
-    internal_router,
     accounts_router,
-    contacts_router,
+    auth_router,
     bank_details_router,
     calcom_webhooks_router,
+    clients_router,
+    contacts_router,
+    conversations_router,
+    engagements_router,
+    health_router,
+    internal_cal_events_router,
     internal_meetings_deals_router,
+    internal_router,
+    invoices_router,
+    order_messages_router,
+    order_tasks_router,
+    orders_router,
+    projects_router,
+    proposals_router,
+    public_proposals_router,
+    services_router,
+    tickets_router,
+    webhooks_router,
 )
-
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -134,6 +134,7 @@ app.include_router(accounts_router)  # Accounts (CRM companies)
 app.include_router(contacts_router)  # Contacts (people at accounts)
 app.include_router(bank_details_router)  # Org bank details (wire/ACH)
 app.include_router(calcom_webhooks_router)  # Cal.com webhook payload capture
+app.include_router(internal_cal_events_router)  # Internal Cal.com normalization API
 app.include_router(internal_meetings_deals_router)  # Internal meetings/deals + org resolution
 
 

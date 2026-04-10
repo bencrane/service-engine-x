@@ -1,6 +1,7 @@
-"""Cal.com webhook sink — captures raw payloads for development inspection."""
+"""Cal.com webhook sink — captures immutable raw events for downstream processing."""
 
 import json
+from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -8,6 +9,18 @@ from fastapi.responses import JSONResponse
 from app.database import get_supabase
 
 router = APIRouter(prefix="/api/webhooks/calcom", tags=["Cal.com Webhooks"])
+
+
+def _extract_booking_uid(payload: dict[str, Any]) -> str | None:
+    nested = payload.get("payload")
+    if isinstance(nested, dict):
+        uid = nested.get("uid")
+        if isinstance(uid, str) and uid.strip():
+            return uid.strip()
+    top_uid = payload.get("uid")
+    if isinstance(top_uid, str) and top_uid.strip():
+        return top_uid.strip()
+    return None
 
 
 @router.post("")
@@ -18,18 +31,12 @@ async def calcom_webhook_sink(request: Request) -> JSONResponse:
 
     event_type = payload.get("triggerEvent", payload.get("type", "unknown"))
 
-    headers = {
-        k: v
-        for k, v in request.headers.items()
-        if k.lower() in ("content-type", "user-agent", "x-cal-signature-256")
-    }
-
     supabase = get_supabase()
-    supabase.table("calcom_webhook_log").insert(
+    supabase.table("cal_webhook_events_raw").insert(
         {
-            "event_type": event_type,
+            "trigger_event": event_type,
             "payload": payload,
-            "headers": headers,
+            "cal_booking_uid": _extract_booking_uid(payload),
         }
     ).execute()
 

@@ -33,7 +33,7 @@ Previously, booking and deal data lived in a separate Outbound Supabase database
 | `orders` | Payments. Linked to engagement and account. |
 | `cal_team_mappings` | Maps SERX org to Cal.com team (by `cal_team_id`). |
 | `cal_team_members` | Members of Cal.com teams. |
-| `calcom_webhook_log` | Raw webhook payload capture (debug/dev table). |
+| `cal_webhook_events_raw` | Raw webhook payload capture (immutable ingest log). |
 
 ### What we are adding
 
@@ -594,7 +594,7 @@ This proposal does not create these tables, but they exist as part of the broade
 - `cal_ooo_entries` — out-of-office entries
 - `cal_recordings` — meeting recordings
 
-The `meetings` table links to `cal_booking_events` via `cal_event_uid` for traceability. The `calcom_webhook_log` table (already exists) captures raw webhook payloads for debugging.
+The `meetings` table links to `cal_booking_events` via `cal_event_uid` for traceability. The `cal_webhook_events_raw` table captures immutable raw webhook payloads for debugging/reprocessing.
 
 ---
 
@@ -604,4 +604,4 @@ The `meetings` table links to `cal_booking_events` via `cal_event_uid` for trace
 |-------|---------|--------|
 | `cal_team_mappings` | Maps SERX org_id ↔ Cal.com team_id | Live, populated |
 | `cal_team_members` | Members of Cal.com teams | Live, populated |
-| `calcom_webhook_log` | Raw webhook payload capture | Live, endpoint at POST /api/webhooks/calcom |
+| `cal_webhook_events_raw` | Raw webhook payload capture | Live, endpoint at POST /api/webhooks/calcom |
