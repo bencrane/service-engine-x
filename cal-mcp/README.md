@@ -22,13 +22,14 @@ Use your Railway public URL with `/mcp`, for example:
 
 - `https://your-service.up.railway.app/mcp`
 
-Authenticate with either:
+Authenticate with:
 
-- `Authorization: Bearer <CAL_MCP_API_KEY>`
 - `X-API-Key: <CAL_MCP_API_KEY>`
+
+`Authorization: Bearer <CAL_MCP_API_KEY>` may work depending on your client/proxy chain, but `X-API-Key` is the canonical header for this setup.
 
 ## Local development
 
 ```bash
-CAL_API_KEY=xxx CAL_MCP_API_KEY=xxx npx mcp-proxy --port 8080 -- npx @calcom/cal-mcp --all-tools
+CAL_API_KEY=xxx CAL_MCP_API_KEY=xxx npx mcp-proxy --port 8080 --apiKey "$CAL_MCP_API_KEY" -- npx @calcom/cal-mcp --all-tools
 ```

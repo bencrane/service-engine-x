@@ -7,7 +7,7 @@
     "start": "./start.sh"
   },
   "dependencies": {
-    "mcp-proxy": "^2",
+    "mcp-proxy": "^6",
     "@calcom/cal-mcp": "latest"
   }
 }
