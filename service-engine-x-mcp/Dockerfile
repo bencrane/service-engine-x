@@ -12,11 +12,12 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --include=dev
 
 COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
+RUN npm prune --omit=dev
 
 EXPOSE 3011
 
