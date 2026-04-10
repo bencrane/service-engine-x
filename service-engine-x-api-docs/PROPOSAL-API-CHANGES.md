@@ -242,3 +242,4 @@ The service catalog remains useful for:
 - Populating proposal items from templates (via `service_id`)
 - Standardizing pricing and scope
 - Internal reporting and categorization
+!!
