@@ -3,3 +3,10 @@ dist
 .git
 .gitignore
 npm-debug.log*
+.DS_Store
+.env
+.env.*
+coverage
+*.log
+.cursor
+.vscode
