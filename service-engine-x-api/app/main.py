@@ -30,6 +30,7 @@ from app.routers import (
     contacts_router,
     bank_details_router,
     calcom_webhooks_router,
+    internal_meetings_deals_router,
 )
 
 
@@ -133,6 +134,7 @@ app.include_router(accounts_router)  # Accounts (CRM companies)
 app.include_router(contacts_router)  # Contacts (people at accounts)
 app.include_router(bank_details_router)  # Org bank details (wire/ACH)
 app.include_router(calcom_webhooks_router)  # Cal.com webhook payload capture
+app.include_router(internal_meetings_deals_router)  # Internal meetings/deals + org resolution
 
 
 def custom_openapi() -> dict:

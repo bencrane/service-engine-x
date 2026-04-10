@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # Third-party
     RESEND_API_KEY: str = ""
     DOCRAPTOR_API_KEY: str = ""
+    CALCOM_API_KEY: str = ""
+    CALCOM_BASE_URL: str = "https://api.cal.com"
+    CALCOM_API_VERSION: str = "2024-06-14"
+    CALCOM_EVENT_TYPE_CACHE_TTL_SECONDS: int = 86400
 
 
 settings = Settings()  # type: ignore[call-arg]
