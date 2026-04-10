@@ -1,0 +1,13 @@
+{
+  "name": "cal-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Remote MCP server for Cal.com",
+  "scripts": {
+    "start": "./start.sh"
+  },
+  "dependencies": {
+    "mcp-proxy": "^2",
+    "@calcom/cal-mcp": "latest"
+  }
+}
