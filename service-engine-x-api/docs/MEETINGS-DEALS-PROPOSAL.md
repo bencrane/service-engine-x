@@ -128,7 +128,7 @@ Cal.com fires these webhook events. Each maps to a meeting status transition:
 | `BOOKING_RESCHEDULED` | Mark old meeting `rescheduled`, create new meeting (see below) | `scheduled` (new), `rescheduled` (old) |
 | `BOOKING_CANCELLED` | Find meeting by `cal_event_uid`, update | `cancelled` |
 | `BOOKING_REJECTED` | Find meeting by `cal_event_uid`, update | `rejected` |
-| `BOOKING_NO_SHOW_UPDATED` | Find meeting by `cal_event_uid`, update | `no_show` |
+| `BOOKING_NO_SHOW_UPDATED` | Find meeting, set `host_no_show` and/or `guest_no_show` flags, set status to `no_show` if entire meeting was a no-show | `no_show` (if whole meeting was a bust) |
 | `MEETING_STARTED` | Find meeting by `cal_event_uid`, update | `in_progress` |
 | `MEETING_ENDED` | Find meeting by `cal_event_uid`, update | `completed` |
 | `AFTER_HOSTS_CAL_VIDEO_NO_SHOW` | Find meeting, set `host_no_show = true` | (no status change) |
@@ -159,8 +159,9 @@ Since we use Cal Video:
 
 ### No-show handling
 
-- **AFTER_HOSTS_CAL_VIDEO_NO_SHOW**: The host did not join. Set `meetings.host_no_show = true`. This is a flag, not a status change — the meeting may still have other participants.
-- **AFTER_GUESTS_CAL_VIDEO_NO_SHOW**: The guest(s) did not join. Set `meetings.guest_no_show = true`. Can also be used to update individual attendee no-show status if tracked at that level in the future.
+- **AFTER_HOSTS_CAL_VIDEO_NO_SHOW**: The host did not join. Set `meetings.host_no_show = true`.
+- **AFTER_GUESTS_CAL_VIDEO_NO_SHOW**: The guest(s) did not join. Set `meetings.guest_no_show = true`.
+- **BOOKING_NO_SHOW_UPDATED**: Sets the appropriate boolean flag(s) (`host_no_show`, `guest_no_show`) for detail, AND sets `status` to `no_show` if the entire meeting was a bust (nobody showed, or the meeting is considered a total no-show). The boolean flags give the detail (who didn't show), the status gives the summary (was this meeting a no-show overall).
 
 ---
 
