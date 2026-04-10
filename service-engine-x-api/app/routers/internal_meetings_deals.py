@@ -215,8 +215,8 @@ def _get_existing_meeting_context(
 @router.get("/resolve-org", dependencies=[Depends(verify_internal_key)])
 async def resolve_org_from_event_type(event_type_id: int = Query(..., ge=1)) -> dict[str, Any]:
     """Resolve SERX org context from a Cal.com event type."""
-    if not settings.CALCOM_API_KEY:
-        raise HTTPException(status_code=503, detail="CALCOM_API_KEY is not configured")
+    if not settings.CAL_API_KEY:
+        raise HTTPException(status_code=503, detail="CAL_API_KEY is not configured")
 
     supabase = get_supabase()
     ttl_seconds = max(settings.CALCOM_EVENT_TYPE_CACHE_TTL_SECONDS, 60)
@@ -251,7 +251,7 @@ async def resolve_org_from_event_type(event_type_id: int = Query(..., ge=1)) -> 
                 }
 
     client = CalcomClient(
-        api_key=settings.CALCOM_API_KEY,
+        api_key=settings.CAL_API_KEY,
         base_url=settings.CALCOM_BASE_URL,
         api_version=settings.CALCOM_API_VERSION,
     )
