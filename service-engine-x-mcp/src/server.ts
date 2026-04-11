@@ -651,6 +651,15 @@ export async function runHttpServer() {
     await transport.handleRequest(req, res, req.body);
   });
 
+  // Reject OAuth discovery/registration with proper JSON so MCP Inspector
+  // falls back to Bearer auth instead of choking on HTML 404s.
+  app.all("/.well-known/oauth-authorization-server", (_req, res) => {
+    res.status(404).json({ error: "OAuth not supported. Use Bearer token auth." });
+  });
+  app.all("/register", (_req, res) => {
+    res.status(404).json({ error: "OAuth not supported. Use Bearer token auth." });
+  });
+
   app.listen(env.PORT, () => {
     console.error(`service-engine-x-mcp listening on http://localhost:${env.PORT}/mcp`);
   });
