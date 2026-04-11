@@ -611,6 +611,18 @@ function extractBookingUid(payload: Record<string, unknown>): string {
 export async function runHttpServer() {
   const server = buildServer();
   const app = express();
+
+  app.use((_req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    if (_req.method === "OPTIONS") {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  });
+
   app.use(express.json({ limit: "2mb" }));
 
   app.get("/healthz", (_req, res) => {
