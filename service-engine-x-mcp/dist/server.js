@@ -452,6 +452,16 @@ function extractBookingUid(payload) {
 export async function runHttpServer() {
     const server = buildServer();
     const app = express();
+    app.use((_req, res, next) => {
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        if (_req.method === "OPTIONS") {
+            res.sendStatus(204);
+            return;
+        }
+        next();
+    });
     app.use(express.json({ limit: "2mb" }));
     app.get("/healthz", (_req, res) => {
         res.status(200).json({
@@ -460,8 +470,8 @@ export async function runHttpServer() {
             drift: buildToolDriftReport(),
         });
     });
-    app.post("/mcp", async (req, res) => {
-        if (!ensureIngressAuth(req, res)) {
+    app.all("/mcp", async (req, res) => {
+        if (req.method === "POST" && !ensureIngressAuth(req, res)) {
             return;
         }
         const transport = new StreamableHTTPServerTransport({
@@ -473,6 +483,14 @@ export async function runHttpServer() {
         });
         await server.connect(transport);
         await transport.handleRequest(req, res, req.body);
+    });
+    // Reject OAuth discovery/registration with proper JSON so MCP Inspector
+    // falls back to Bearer auth instead of choking on HTML 404s.
+    app.all("/.well-known/oauth-authorization-server", (_req, res) => {
+        res.status(404).json({ error: "OAuth not supported. Use Bearer token auth." });
+    });
+    app.all("/register", (_req, res) => {
+        res.status(404).json({ error: "OAuth not supported. Use Bearer token auth." });
     });
     app.listen(env.PORT, () => {
         console.error(`service-engine-x-mcp listening on http://localhost:${env.PORT}/mcp`);
