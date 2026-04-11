@@ -13,7 +13,7 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
 
-COPY start.sh ./
+COPY start.sh auth-proxy.mjs ./
 RUN chmod +x start.sh
 
 EXPOSE 8080
