@@ -317,6 +317,41 @@ async def resolve_org_from_event_type(event_type_id: int = Query(..., ge=1)) -> 
     }
 
 
+@router.get("/resolve-org-from-team", dependencies=[Depends(verify_internal_key)])
+async def resolve_org_from_team(cal_team_id: int = Query(..., ge=1)) -> dict[str, Any]:
+    """Resolve SERX org context directly from a Cal.com team ID."""
+    supabase = get_supabase()
+
+    mapping_result = (
+        supabase.table("cal_team_mappings")
+        .select("*")
+        .eq("cal_team_id", cal_team_id)
+        .eq("is_active", True)
+        .limit(1)
+        .execute()
+    )
+    if not mapping_result.data:
+        raise HTTPException(status_code=404, detail="No active Cal team mapping found for this team ID")
+
+    mapping = mapping_result.data[0]
+
+    org_result = (
+        supabase.table("organizations")
+        .select("id, name, slug, domain")
+        .eq("id", mapping["org_id"])
+        .limit(1)
+        .execute()
+    )
+    if not org_result.data:
+        raise HTTPException(status_code=404, detail="Mapped organization no longer exists")
+
+    return {
+        "cal_team_id": cal_team_id,
+        "org": org_result.data[0],
+        "mapping": mapping,
+    }
+
+
 @router.post("/orgs/{org_id}/meetings/from-cal-event", dependencies=[Depends(verify_internal_key)])
 async def create_meeting_from_cal_event(org_id: str, body: MeetingFromCalEventRequest) -> dict[str, Any]:
     """Create (or de-duplicate) a meeting from Cal.com booking payload data."""

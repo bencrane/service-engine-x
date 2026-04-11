@@ -84,6 +84,7 @@ export const coreToolDefinitions: ToolDefinition[] = [
 
   // 5.2 Meeting + Deal lifecycle
   { name: "serx_resolve_org_from_event_type", kind: "RO", method: "GET", path: "/api/internal/resolve-org", authMode: INTERNAL, description: "Resolves org/tenant context from Cal event type ID before write operations." },
+  { name: "serx_resolve_org_from_team_id", kind: "RO", method: "GET", path: "/api/internal/resolve-org-from-team", authMode: INTERNAL, description: "Resolves org/tenant context directly from a Cal.com team ID without needing an event type." },
   { name: "serx_create_meeting_from_cal_event", kind: "IDEMP", method: "POST", path: "/api/internal/orgs/{org_id}/meetings/from-cal-event", authMode: INTERNAL, allowBody: true, description: "Creates or deduplicates a meeting from Cal event payload context." },
   { name: "serx_update_meeting", kind: "IDEMP", method: "PUT", path: "/api/internal/orgs/{org_id}/meetings/{meeting_id}", authMode: INTERNAL, allowBody: true, description: "Updates internal meeting orchestration fields and linked deal context." },
   { name: "serx_get_meeting_by_cal_uid", kind: "RO", method: "GET", path: "/api/internal/orgs/{org_id}/meetings/by-cal-uid/{cal_event_uid}", authMode: INTERNAL, description: "Retrieves meeting by Cal event UID." },
