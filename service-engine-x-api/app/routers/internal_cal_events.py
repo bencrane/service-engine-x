@@ -362,6 +362,22 @@ async def mark_raw_event_processed(
     return result.data[0]
 
 
+@router.get("/raw-events/{event_id}", dependencies=[Depends(verify_internal_key)])
+async def get_cal_raw_event(event_id: UUID) -> dict[str, Any]:
+    """Retrieve a single stored raw event from cal_raw_events by ID."""
+    supabase = get_supabase()
+    result = (
+        supabase.table("cal_raw_events")
+        .select("*")
+        .eq("id", str(event_id))
+        .limit(1)
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Cal raw event not found")
+    return result.data[0]
+
+
 @router.post("/booking-events", dependencies=[Depends(verify_internal_key)])
 async def create_booking_event(body: BookingEventCreateRequest) -> dict[str, Any]:
     merged = body.model_dump()
