@@ -4,7 +4,7 @@ Remote HTTP MCP server for Cal.com, built by proxying Cal.com's official stdio M
 
 ## Architecture
 
-`MCP Client -> mcp-proxy (HTTP) -> @calcom/cal-mcp (stdio) -> Cal.com API v2`
+`MCP Client -> auth-proxy (:8080, Bearer→X-API-Key) -> mcp-proxy (:9090, 127.0.0.1) -> @calcom/cal-mcp (stdio) -> Cal.com API v2`
 
 ## Secrets and environment
 
@@ -22,14 +22,15 @@ Use your Railway public URL with `/mcp`, for example:
 
 - `https://your-service.up.railway.app/mcp`
 
-Authenticate with:
+Authenticate with either header:
 
 - `X-API-Key: <CAL_MCP_API_KEY>`
+- `Authorization: Bearer <CAL_MCP_API_KEY>`
 
-`Authorization: Bearer <CAL_MCP_API_KEY>` may work depending on your client/proxy chain, but `X-API-Key` is the canonical header for this setup.
+Both work. A lightweight auth-proxy in front of mcp-proxy normalizes `Authorization: Bearer` → `X-API-Key` before forwarding.
 
 ## Local development
 
 ```bash
-CAL_API_KEY=xxx CAL_MCP_API_KEY=xxx npx mcp-proxy --port 8080 --apiKey "$CAL_MCP_API_KEY" -- npx @calcom/cal-mcp --all-tools
+CAL_API_KEY=xxx CAL_MCP_API_KEY=xxx ./start.sh
 ```
