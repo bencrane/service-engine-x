@@ -633,22 +633,54 @@ export async function runHttpServer() {
     });
   });
 
+  const transports = new Map<string, StreamableHTTPServerTransport>();
+
   app.post("/mcp", async (req, res) => {
     if (!ensureIngressAuth(req, res)) {
       return;
     }
 
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-      enableJsonResponse: true,
-    });
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    let transport = sessionId ? transports.get(sessionId) : undefined;
 
-    res.on("close", () => {
-      transport.close();
-    });
+    if (!transport) {
+      transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => crypto.randomUUID(),
+        enableJsonResponse: true,
+      });
 
-    await server.connect(transport);
+      transport.onclose = () => {
+        const sid = transport!.sessionId;
+        if (sid) transports.delete(sid);
+      };
+
+      await server.connect(transport);
+
+      const sid = transport.sessionId;
+      if (sid) transports.set(sid, transport);
+    }
+
     await transport.handleRequest(req, res, req.body);
+  });
+
+  app.get("/mcp", async (req, res) => {
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    const transport = sessionId ? transports.get(sessionId) : undefined;
+    if (!transport) {
+      res.status(400).json({ error: "No active session. Send an initialize request via POST first." });
+      return;
+    }
+    await transport.handleRequest(req, res);
+  });
+
+  app.delete("/mcp", async (req, res) => {
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+    const transport = sessionId ? transports.get(sessionId) : undefined;
+    if (!transport) {
+      res.status(400).json({ error: "No active session." });
+      return;
+    }
+    await transport.handleRequest(req, res);
   });
 
   app.listen(env.PORT, () => {
