@@ -20,6 +20,7 @@ FROM node:20-bookworm-slim AS runtime
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV PORT=3011
 
 # Install Doppler CLI for runtime secret injection via DOPPLER_TOKEN.
 RUN apt-get update \
@@ -33,8 +34,10 @@ COPY package.json ./
 
 USER node
 
+EXPOSE 3011
+
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 3011) + '/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-# Railway provides PORT at runtime; app defaults to 3011 via env.ts.
+# Railway provides PORT via service variable; must match domain targetPort (3011).
 CMD ["doppler", "run", "--", "npm", "run", "start"]
