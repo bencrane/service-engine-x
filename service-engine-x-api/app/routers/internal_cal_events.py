@@ -231,12 +231,14 @@ async def verify_internal_key(x_internal_key: str = Header(...)) -> None:
 class RawEventCreateRequest(BaseModel):
     trigger_event: str
     payload: dict[str, Any]
-    org_id: UUID | None = None
-    cal_booking_uid: str | None = None
+    cal_event_uid: str | None = None
+    organizer_email: str | None = None
+    attendee_emails: list[str] = Field(default_factory=list)
+    event_type_id: int | None = None
 
 
 class RawEventProcessedRequest(BaseModel):
-    processed_at: datetime | None = None
+    processed_by: str | None = None
 
 
 class BookingEventCreateRequest(BaseModel):
@@ -318,10 +320,13 @@ async def create_raw_event(body: RawEventCreateRequest) -> dict[str, Any]:
     insert_payload = {
         "trigger_event": body.trigger_event,
         "payload": body.payload,
-        "org_id": str(body.org_id) if body.org_id else None,
-        "cal_booking_uid": body.cal_booking_uid,
+        "cal_event_uid": body.cal_event_uid,
+        "organizer_email": body.organizer_email,
+        "attendee_emails": body.attendee_emails,
+        "event_type_id": body.event_type_id,
+        "processed": False,
     }
-    result = supabase.table("cal_webhook_events_raw").insert(insert_payload).execute()
+    result = supabase.table("cal_raw_events").insert(insert_payload).execute()
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to create raw event")
     return {"id": result.data[0]["id"], "event": result.data[0]}
@@ -332,10 +337,10 @@ async def list_unprocessed_raw_events(limit: int = 100) -> list[dict[str, Any]]:
     bounded_limit = max(1, min(limit, 500))
     supabase = get_supabase()
     result = (
-        supabase.table("cal_webhook_events_raw")
+        supabase.table("cal_raw_events")
         .select("*")
-        .is_("processed_at", "null")
-        .order("received_at")
+        .eq("processed", False)
+        .order("created_at")
         .limit(bounded_limit)
         .execute()
     )
@@ -350,10 +355,12 @@ async def mark_raw_event_processed(
     event_id: UUID, body: RawEventProcessedRequest
 ) -> dict[str, Any]:
     supabase = get_supabase()
-    processed_at = body.processed_at.isoformat() if body.processed_at else _now_iso()
+    update_payload: dict[str, Any] = {"processed": True}
+    if body.processed_by:
+        update_payload["processed_by"] = body.processed_by
     result = (
-        supabase.table("cal_webhook_events_raw")
-        .update({"processed_at": processed_at})
+        supabase.table("cal_raw_events")
+        .update(update_payload)
         .eq("id", str(event_id))
         .execute()
     )
