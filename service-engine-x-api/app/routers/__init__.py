@@ -3,6 +3,7 @@
 from app.routers.accounts import router as accounts_router
 from app.routers.auth import router as auth_router
 from app.routers.bank_details import router as bank_details_router
+from app.routers.cal_webhooks import router as cal_webhooks_router
 from app.routers.calcom_webhooks import router as calcom_webhooks_router
 from app.routers.clients import router as clients_router
 from app.routers.contacts import router as contacts_router
@@ -43,6 +44,7 @@ __all__ = [
     "accounts_router",
     "contacts_router",
     "bank_details_router",
+    "cal_webhooks_router",
     "calcom_webhooks_router",
     "internal_cal_events_router",
     "internal_meetings_deals_router",

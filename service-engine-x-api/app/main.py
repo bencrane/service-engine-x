@@ -13,6 +13,7 @@ from app.routers import (
     accounts_router,
     auth_router,
     bank_details_router,
+    cal_webhooks_router,
     calcom_webhooks_router,
     clients_router,
     contacts_router,
@@ -133,7 +134,8 @@ app.include_router(internal_router)  # Internal admin API
 app.include_router(accounts_router)  # Accounts (CRM companies)
 app.include_router(contacts_router)  # Contacts (people at accounts)
 app.include_router(bank_details_router)  # Org bank details (wire/ACH)
-app.include_router(calcom_webhooks_router)  # Cal.com webhook payload capture
+app.include_router(cal_webhooks_router)  # Cal.com webhook receiver (HMAC + agent routing)
+app.include_router(calcom_webhooks_router)  # Cal.com legacy webhook sink (raw capture)
 app.include_router(internal_cal_events_router)  # Internal Cal.com normalization API
 app.include_router(internal_meetings_deals_router)  # Internal meetings/deals + org resolution
 

@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     CALCOM_BASE_URL: str = "https://api.cal.com"
     CALCOM_API_VERSION: str = "2024-06-14"
     CALCOM_EVENT_TYPE_CACHE_TTL_SECONDS: int = 86400
+    CAL_WEBHOOK_SECRET: str = ""
 
 
 settings = Settings()  # type: ignore[call-arg]
