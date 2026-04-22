@@ -83,6 +83,9 @@ export const coreToolDefinitions: ToolDefinition[] = [
   { name: "serx_get_recordings_by_uid", kind: "RO", method: "GET", path: "/api/internal/cal/recordings/by-uid/{cal_booking_uid}", authMode: INTERNAL, description: "Lists recordings for a Cal booking UID." },
   { name: "serx_update_recording", kind: "IDEMP", method: "PATCH", path: "/api/internal/cal/recordings/{recording_id}", authMode: INTERNAL, allowBody: true, description: "Updates recording enrichment fields like transcript URL and status." },
 
+  // 5.1b Webhook events (serx-webhooks webhook_events_raw read surface)
+  { name: "serx_get_webhook_event", kind: "RO", method: "GET", path: "/api/internal/webhook-events/{event_id}", authMode: INTERNAL, description: "Retrieves a stored webhook_events_raw row (full payload + headers) by id. Use with event_ref.id from managed-agents session initial message." },
+
   // 5.2 Meeting + Deal lifecycle
   { name: "serx_resolve_org_from_event_type", kind: "RO", method: "GET", path: "/api/internal/resolve-org", authMode: INTERNAL, description: "Resolves org/tenant context from Cal event type ID before write operations." },
   { name: "serx_resolve_org_from_team_id", kind: "RO", method: "GET", path: "/api/internal/resolve-org-from-team", authMode: INTERNAL, description: "Resolves org/tenant context directly from a Cal.com team ID without needing an event type." },

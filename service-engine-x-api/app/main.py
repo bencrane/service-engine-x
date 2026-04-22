@@ -23,6 +23,7 @@ from app.routers import (
     internal_cal_events_router,
     internal_meetings_deals_router,
     internal_router,
+    internal_webhook_events_router,
     invoices_router,
     order_messages_router,
     order_tasks_router,
@@ -138,6 +139,7 @@ app.include_router(cal_webhooks_router)  # Cal.com webhook receiver (HMAC + agen
 app.include_router(calcom_webhooks_router)  # Cal.com legacy webhook sink (raw capture)
 app.include_router(internal_cal_events_router)  # Internal Cal.com normalization API
 app.include_router(internal_meetings_deals_router)  # Internal meetings/deals + org resolution
+app.include_router(internal_webhook_events_router)  # Internal read of serx-webhooks webhook_events_raw
 
 
 def custom_openapi() -> dict:

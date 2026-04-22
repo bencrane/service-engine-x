@@ -13,6 +13,7 @@ from app.routers.health import router as health_router
 from app.routers.internal import router as internal_router
 from app.routers.internal_cal_events import router as internal_cal_events_router
 from app.routers.internal_meetings_deals import router as internal_meetings_deals_router
+from app.routers.internal_webhook_events import router as internal_webhook_events_router
 from app.routers.invoices import router as invoices_router
 from app.routers.order_messages import router as order_messages_router
 from app.routers.order_tasks import router as order_tasks_router
@@ -48,4 +49,5 @@ __all__ = [
     "calcom_webhooks_router",
     "internal_cal_events_router",
     "internal_meetings_deals_router",
+    "internal_webhook_events_router",
 ]

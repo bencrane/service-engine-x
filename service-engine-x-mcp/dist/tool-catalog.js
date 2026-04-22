@@ -64,6 +64,8 @@ export const coreToolDefinitions = [
     { name: "serx_create_or_upsert_recording", kind: "IDEMP", method: "POST", path: "/api/internal/cal/recordings", authMode: INTERNAL, allowBody: true, description: "Creates or updates recording metadata linked to Cal booking identifiers." },
     { name: "serx_get_recordings_by_uid", kind: "RO", method: "GET", path: "/api/internal/cal/recordings/by-uid/{cal_booking_uid}", authMode: INTERNAL, description: "Lists recordings for a Cal booking UID." },
     { name: "serx_update_recording", kind: "IDEMP", method: "PATCH", path: "/api/internal/cal/recordings/{recording_id}", authMode: INTERNAL, allowBody: true, description: "Updates recording enrichment fields like transcript URL and status." },
+    // 5.1b Webhook events (serx-webhooks webhook_events_raw read surface)
+    { name: "serx_get_webhook_event", kind: "RO", method: "GET", path: "/api/internal/webhook-events/{event_id}", authMode: INTERNAL, description: "Retrieves a stored webhook_events_raw row (full payload + headers) by id. Use with event_ref.id from managed-agents session initial message." },
     // 5.2 Meeting + Deal lifecycle
     { name: "serx_resolve_org_from_event_type", kind: "RO", method: "GET", path: "/api/internal/resolve-org", authMode: INTERNAL, description: "Resolves org/tenant context from Cal event type ID before write operations." },
     { name: "serx_resolve_org_from_team_id", kind: "RO", method: "GET", path: "/api/internal/resolve-org-from-team", authMode: INTERNAL, description: "Resolves org/tenant context directly from a Cal.com team ID without needing an event type." },
@@ -84,6 +86,7 @@ export const coreToolDefinitions = [
     { name: "serx_get_account", kind: "RO", method: "GET", path: "/api/internal/orgs/{org_id}/accounts/{account_id}", authMode: INTERNAL, description: "Gets an account by ID in org scope." },
     { name: "serx_list_contacts", kind: "RO", method: "GET", path: "/api/internal/orgs/{org_id}/contacts", authMode: INTERNAL, description: "Lists org contacts with optional search/account filtering." },
     { name: "serx_get_contact", kind: "RO", method: "GET", path: "/api/internal/orgs/{org_id}/contacts/{contact_id}", authMode: INTERNAL, description: "Gets a contact by ID in org scope." },
+    { name: "serx_upsert_contact", kind: "IDEMP", method: "POST", path: "/api/internal/orgs/{org_id}/contacts/upsert", authMode: INTERNAL, allowBody: true, description: "Upserts a contact by (org_id, email). Returns {contact_id, created}. Used by Cal.com booking orchestration to ensure attendee contacts exist." },
     { name: "serx_list_proposals_internal", kind: "RO", method: "GET", path: "/api/internal/orgs/{org_id}/proposals", authMode: INTERNAL, description: "Lists org proposals from internal API surface." },
     { name: "serx_get_proposal_internal", kind: "RO", method: "GET", path: "/api/internal/orgs/{org_id}/proposals/{proposal_id}", authMode: INTERNAL, description: "Gets a proposal by ID from internal API surface." },
     { name: "serx_get_proposal_deliverables", kind: "RO", method: "GET", path: "/api/internal/orgs/{org_id}/proposals/{proposal_id}/deliverables", authMode: INTERNAL, description: "Gets signed proposal deliverables, engagement, and project context." },

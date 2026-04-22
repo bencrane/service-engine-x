@@ -4,6 +4,7 @@ import { coreToolDefinitions } from "./tool-catalog.js";
  * Manual overlays for route-only gaps and lifecycle-specific naming.
  */
 export const manualOverlayToolNames = [
+    "serx_upsert_contact",
     "serx_list_orders",
     "serx_create_order",
     "serx_get_order",
