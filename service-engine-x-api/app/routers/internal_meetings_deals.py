@@ -74,6 +74,7 @@ class MeetingUpdateRequest(BaseModel):
     host_no_show: bool | None = None
     guest_no_show: bool | None = None
     custom_fields: dict[str, Any] | None = None
+    cancellation_reason: str | None = None
 
 
 class DealCreateRequest(BaseModel):
@@ -654,6 +655,8 @@ async def update_meeting(org_id: str, meeting_id: str, body: MeetingUpdateReques
         update_payload["guest_no_show"] = body.guest_no_show
     if body.custom_fields is not None:
         update_payload["custom_fields"] = body.custom_fields
+    if body.cancellation_reason is not None:
+        update_payload["cancellation_reason"] = body.cancellation_reason
 
     result = supabase.table("meetings").update(update_payload).eq("id", meeting_id).execute()
     if not result.data:
