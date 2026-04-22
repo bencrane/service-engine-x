@@ -133,7 +133,7 @@ def test_nested_booking_created(client: TestClient, fake_supabase: _FakeSupabase
     rows = _rows_for(fake_supabase)
     assert len(rows) == 1
     row = rows[0]
-    assert row["source"] == "cal.com"
+    assert row["source"] == "cal_com"
     assert row["trigger_event"] == "BOOKING_CREATED"
     assert row["payload"] == body
     assert row["signature_valid"] is None  # no secret set

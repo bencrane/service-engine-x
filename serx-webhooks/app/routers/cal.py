@@ -62,7 +62,7 @@ def _store_event(
         payload, trigger_event = _parse_payload(raw_body)
         signature_valid = _compute_signature_valid(raw_body, signature_header)
         row = {
-            "source": "cal.com",
+            "source": "cal_com",
             "trigger_event": trigger_event,
             "event_key": event_key,
             "payload": payload,
@@ -78,18 +78,18 @@ def _store_event(
             duplicate = True
         else:
             logger.exception(
-                "webhook_error source=cal.com trigger_event=%s event_key=%s",
+                "webhook_error source=cal_com trigger_event=%s event_key=%s",
                 trigger_event,
                 event_key,
             )
             return
 
     if not duplicate and row_id:
-        dispatch_event(row_id=row_id, source="cal.com", trigger_event=trigger_event)
+        dispatch_event(row_id=row_id, source="cal_com", trigger_event=trigger_event)
 
     latency_ms = int((time.monotonic() - t_start) * 1000)
     logger.info(
-        "%s source=cal.com trigger_event=%s event_key=%s row_id=%s "
+        "%s source=cal_com trigger_event=%s event_key=%s row_id=%s "
         "signature_valid=%s duplicate=%s latency_ms=%d",
         "webhook_duplicate" if duplicate else "webhook_stored",
         trigger_event,

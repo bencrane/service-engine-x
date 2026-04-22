@@ -90,7 +90,7 @@ design, so no policies are needed for our access path.
 -- See serx-webhooks/migrations/001_webhook_events_raw.sql for the authoritative schema
 create table webhook_events_raw (
     id uuid primary key default gen_random_uuid(),
-    source text not null,                                      -- hardcoded "cal.com" in phase 1
+    source text not null,                                      -- hardcoded "cal_com" in phase 1
     trigger_event text,                                        -- e.g. BOOKING_CREATED, MEETING_STARTED; null for non-JSON
     event_key text not null,                                   -- sha256(raw_body)
     payload jsonb not null,                                    -- parsed body, or {"_raw_text": "..."}
@@ -271,7 +271,7 @@ Not yet done. When ready:
    - Triggers: `BOOKING_CREATED`, `BOOKING_CANCELLED`, `BOOKING_RESCHEDULED`, `MEETING_STARTED`, `MEETING_ENDED` (all of them — this service is dumb by design).
 4. Trigger a real test booking on Cal.com. Verify:
    - Railway logs show `webhook_stored ... signature_valid=True`
-   - `select count(*) from webhook_events_raw where source='cal.com' and signature_valid=true;` > 0
+   - `select count(*) from webhook_events_raw where source='cal_com' and signature_valid=true;` > 0
 5. Once confident, disable the old Cal.com webhook subscription pointing at
    `service-engine-x-api`. Leave the code in place (the directive explicitly
    forbade touching it).

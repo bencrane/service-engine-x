@@ -61,7 +61,7 @@ def update_dispatch_result(
 
 def _normalize_event_name(source: str, trigger_event: str | None) -> str:
     value = trigger_event or ""
-    if source == "cal.com":
+    if source == "cal_com":
         return value.upper()
     return value
 
