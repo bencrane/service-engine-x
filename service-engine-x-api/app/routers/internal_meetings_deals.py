@@ -59,6 +59,8 @@ class MeetingFromCalEventRequest(BaseModel):
     organizer_email: str | None = None
     status: str = "scheduled"
     rescheduled_from_uid: str | None = None
+    notes: str | None = None
+    custom_fields: dict[str, Any] = Field(default_factory=dict)
 
 
 class MeetingUpdateRequest(BaseModel):
@@ -71,6 +73,7 @@ class MeetingUpdateRequest(BaseModel):
     transcript_url: str | None = None
     host_no_show: bool | None = None
     guest_no_show: bool | None = None
+    custom_fields: dict[str, Any] | None = None
 
 
 class DealCreateRequest(BaseModel):
@@ -538,6 +541,8 @@ async def create_meeting_from_cal_event(org_id: str, body: MeetingFromCalEventRe
                 if body.organizer_email
                 else None,
                 "attendee_emails": attendee_emails,
+                "notes": body.notes,
+                "custom_fields": body.custom_fields or {},
                 "updated_at": _now_iso(),
             }
         )
@@ -647,6 +652,8 @@ async def update_meeting(org_id: str, meeting_id: str, body: MeetingUpdateReques
         update_payload["host_no_show"] = body.host_no_show
     if body.guest_no_show is not None:
         update_payload["guest_no_show"] = body.guest_no_show
+    if body.custom_fields is not None:
+        update_payload["custom_fields"] = body.custom_fields
 
     result = supabase.table("meetings").update(update_payload).eq("id", meeting_id).execute()
     if not result.data:
