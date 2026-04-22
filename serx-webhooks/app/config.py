@@ -9,6 +9,16 @@ class Settings(BaseSettings):
     # Cal.com webhook HMAC — empty means skip verification and log warning
     CAL_WEBHOOK_SECRET: str = ""
 
+    # managed-agents-x-api dispatch. Empty MAG_AUTH_TOKEN disables dispatch
+    # (rows marked 'dispatch_disabled') so local dev / tests run without
+    # the secret. Dispatch runs out-of-band inside the existing ingest
+    # BackgroundTask — upstream 202 does not wait on it.
+    MANAGED_AGENTS_API_BASE_URL: str = "https://api.managedagents.run"
+    MAG_AUTH_TOKEN: str = ""
+    MANAGED_AGENTS_DISPATCH_ENABLED: bool = True
+    MANAGED_AGENTS_DISPATCH_TIMEOUT_SECONDS: float = 10.0
+    MANAGED_AGENTS_DISPATCH_MAX_ATTEMPTS: int = 3
+
     # Runtime
     PORT: int = 8000
     DEBUG: bool = False

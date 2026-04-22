@@ -9,12 +9,12 @@ dependencies = [
     "pydantic>=2.7,<3",
     "pydantic-settings>=2.7,<3",
     "supabase>=2.13,<3",
+    "httpx>=0.28,<1",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8,<9",
-    "httpx>=0.28,<1",
     "ruff>=0.9,<1",
 ]
 

@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.database import get_supabase
+from app.dispatcher import dispatch_event
 
 logger = logging.getLogger("serx_webhooks.cal")
 
@@ -82,6 +83,9 @@ def _store_event(
                 event_key,
             )
             return
+
+    if not duplicate and row_id:
+        dispatch_event(row_id=row_id, source="cal.com", trigger_event=trigger_event)
 
     latency_ms = int((time.monotonic() - t_start) * 1000)
     logger.info(
