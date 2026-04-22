@@ -361,6 +361,82 @@ async def get_contact_for_org(org_id: str, contact_id: str) -> dict[str, Any]:
     return result.data[0]
 
 
+class ContactUpsertRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=255)
+    name_f: str | None = Field(None, max_length=100)
+    name_l: str | None = Field(None, max_length=100)
+    phone: str | None = Field(None, max_length=50)
+    title: str | None = Field(None, max_length=100)
+    account_id: str | None = None
+
+
+@router.post("/orgs/{org_id}/contacts/upsert", dependencies=[Depends(verify_internal_key)])
+async def upsert_contact_for_org(
+    org_id: str,
+    body: ContactUpsertRequest,
+) -> dict[str, Any]:
+    """Upsert a contact by (org_id, email). Idempotent: used by Cal.com booking orchestration to ensure attendee contacts exist before linking to meetings."""
+    supabase = get_supabase()
+    email = body.email.lower().strip()
+
+    existing = (
+        supabase.table("contacts")
+        .select("*")
+        .eq("org_id", org_id)
+        .eq("email", email)
+        .is_("deleted_at", "null")
+        .limit(1)
+        .execute()
+    )
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    if existing.data:
+        contact = existing.data[0]
+        update_payload: dict[str, Any] = {"updated_at": now}
+        if body.name_f is not None and body.name_f.strip():
+            update_payload["name_f"] = body.name_f.strip()
+        if body.name_l is not None and body.name_l.strip():
+            update_payload["name_l"] = body.name_l.strip()
+        if body.phone is not None:
+            update_payload["phone"] = body.phone
+        if body.title is not None:
+            update_payload["title"] = body.title
+        if body.account_id is not None:
+            update_payload["account_id"] = body.account_id or None
+
+        if len(update_payload) > 1:
+            result = (
+                supabase.table("contacts")
+                .update(update_payload)
+                .eq("id", contact["id"])
+                .execute()
+            )
+            contact = result.data[0] if result.data else contact
+
+        return {"contact_id": contact["id"], "created": False, "contact": contact}
+
+    insert_payload = {
+        "org_id": org_id,
+        "account_id": body.account_id or None,
+        "name_f": (body.name_f or "").strip() or "Unknown",
+        "name_l": (body.name_l or "").strip() or "Unknown",
+        "email": email,
+        "phone": body.phone,
+        "title": body.title,
+        "is_primary": False,
+        "is_billing": False,
+        "custom_fields": {},
+        "created_at": now,
+        "updated_at": now,
+    }
+    result = supabase.table("contacts").insert(insert_payload).execute()
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Failed to upsert contact")
+    contact = result.data[0]
+    return {"contact_id": contact["id"], "created": True, "contact": contact}
+
+
 # ============== Proposals (Read) ==============
 
 
