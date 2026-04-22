@@ -83,7 +83,7 @@ class DealCreateRequest(BaseModel):
     meeting_id: str
     title: str
     value: float | None = None
-    source: str = "cal.com"
+    source: str = "cal_com"
     notes: str | None = None
     referred_by_account_id: str | None = None
 
@@ -431,7 +431,7 @@ async def create_meeting_from_cal_event(org_id: str, body: MeetingFromCalEventRe
                                 "name": domain,
                                 "domain": domain,
                                 "lifecycle": "lead",
-                                "source": "cal.com",
+                                "source": "cal_com",
                                 "created_at": now_iso,
                                 "updated_at": now_iso,
                             }

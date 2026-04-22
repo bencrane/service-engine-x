@@ -94,7 +94,7 @@ Each recurrence of a recurring booking fires its own BOOKING_CREATED webhook ind
 7. MEETING_ENDED webhook fires → meeting.status → completed
        ↓
 8. Intake agent or human qualifies the meeting
-   - Deal created (status: qualified, source: "cal.com")
+   - Deal created (status: qualified, source: "cal_com")
    - meeting.deal_id set to new deal
    - Future meetings with same prospect linked to this deal explicitly
        ↓
@@ -212,7 +212,7 @@ Since we use Cal Video:
 | `title` | VARCHAR(255) | NOT NULL | e.g. "Outbound campaign for Acme" |
 | `status` | VARCHAR(20) | NOT NULL DEFAULT 'qualified' | qualified, proposal_sent, negotiating, won, lost |
 | `value` | DECIMAL(12,2) | nullable | Estimated deal value |
-| `source` | VARCHAR(50) | nullable | "cal.com", "manual", "referral" |
+| `source` | VARCHAR(50) | nullable | "cal_com", "manual", "referral" |
 | `referred_by_account_id` | UUID | FK → accounts(id), nullable | Partner/referral source |
 | `lost_reason` | TEXT | nullable | Populated when status = lost |
 | `notes` | TEXT | nullable | |
@@ -417,7 +417,7 @@ Account creation from Cal.com payload — field availability:
 | `name` | NOT NULL | No — only have domain | Use domain as placeholder (e.g. "acme.com") |
 | `domain` | nullable | Yes — extracted from email | |
 | `lifecycle` | default 'lead' | N/A | Use default |
-| `source` | nullable | Yes | Set to "cal.com" |
+| `source` | nullable | Yes | Set to "cal_com" |
 
 Contact creation from Cal.com payload — field availability:
 
@@ -485,7 +485,7 @@ Request body:
   "meeting_id": "...",
   "title": "Outbound campaign for Acme",
   "value": 5000.00,
-  "source": "cal.com"
+  "source": "cal_com"
 }
 ```
 Behavior:
@@ -574,7 +574,7 @@ These follow existing SERX patterns: pagination with `limit`/`page`, sort with `
 
 1. **`proposals.converted_engagement_id`** — exists and handles proposal → engagement. Deals sit upstream and do not interfere.
 2. **`engagements.proposal_id`** — exists. The chain `deal → proposal → engagement` works without changes to engagements.
-3. **`accounts.source`** — exists as VARCHAR(50). Can be set to `"cal.com"` when auto-created from a Cal.com event. No change needed.
+3. **`accounts.source`** — exists as VARCHAR(50). Can be set to `"cal_com"` when auto-created from a Cal.com event. No change needed.
 4. **`contacts.name_l` is NOT NULL** — Cal.com may provide a single name with no space. Intake agent should use empty string for `name_l` if no space. No schema change, but worth handling in code.
 5. **`CALCOM-DEALS.md`** — documents the old Outbound DB approach. Should be archived or updated once this is implemented, as it describes a system being replaced.
 6. **Cal.com API key** — the org resolution endpoint calls the Cal.com API (`GET /v2/event-types/{eventTypeId}`). This requires a Cal.com API key to be configured in environment/Doppler. This is a configuration prerequisite, not a schema change.
