@@ -11,7 +11,6 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.routers import (
     accounts_router,
-    auth_router,
     bank_details_router,
     cal_webhooks_router,
     calcom_webhooks_router,
@@ -30,11 +29,13 @@ from app.routers import (
     order_messages_router,
     order_tasks_router,
     orders_router,
+    orgs_router,
     projects_router,
     proposals_router,
     public_proposals_router,
     services_router,
     tickets_router,
+    users_router,
     webhooks_router,
 )
 
@@ -118,7 +119,6 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 
 # Include routers
-app.include_router(auth_router)
 app.include_router(health_router)
 app.include_router(clients_router)
 app.include_router(services_router)
@@ -144,6 +144,8 @@ app.include_router(internal_cal_events_router)  # Internal Cal.com normalization
 app.include_router(internal_meetings_deals_router)  # Internal meetings/deals + org resolution
 app.include_router(internal_webhook_events_router)  # Internal read of serx-webhooks webhook_events_raw
 app.include_router(internal_scheduler_router)  # Time-based event dispatcher (Trigger.dev ticker → MAG)
+app.include_router(orgs_router)  # Public orgs list (for frontend org picker)
+app.include_router(users_router)  # Public users list (for frontend user picker)
 
 
 def custom_openapi() -> dict:
@@ -222,8 +224,6 @@ async def api_index() -> dict:
         "name": settings.APP_NAME,
         "version": settings.APP_VERSION,
         "endpoints": {
-            "auth_login": "/api/auth/login",
-            "auth_me": "/api/auth/me",
             "health": "/api/health",
             "clients": "/api/clients",
             "services": "/api/services",
@@ -238,6 +238,8 @@ async def api_index() -> dict:
             "contacts": "/api/contacts",
             "meetings": "/api/meetings",
             "meetings_upcoming": "/api/meetings/upcoming",
+            "orgs": "/api/orgs",
+            "users": "/api/users",
             "bank_details": "/api/bank-details",
             "openapi": "/api/openapi.json",
         },

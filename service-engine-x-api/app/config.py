@@ -6,10 +6,8 @@ class Settings(BaseSettings):
     SERVICE_ENGINE_X_SUPABASE_URL: str
     SERVICE_ENGINE_X_SUPABASE_SERVICE_ROLE_KEY: str
 
-    # JWT
-    JWT_SECRET_KEY: str = "change-me-in-production"
-    JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRATION_HOURS: int = 72
+    # Auth — single shared bearer token; org_id/user_id come per-request from caller
+    SERX_AUTH_TOKEN: str = ""
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
@@ -19,9 +17,6 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     APP_NAME: str = "Service Engine X API"
     APP_VERSION: str = "1.0.0"
-
-    # Internal
-    INTERNAL_API_KEY: str = ""
 
     # Managed agents dispatch (used by scheduler endpoint)
     OPEX_API_URL: str = ""

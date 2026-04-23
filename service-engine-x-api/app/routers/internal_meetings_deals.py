@@ -3,9 +3,10 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
+from app.auth import verify_token
 from app.config import settings
 from app.database import get_supabase
 from app.services.calcom_client import CalcomClient, CalcomClientError, CalcomNotFoundError
@@ -24,20 +25,6 @@ MEETING_STATUSES = {
 }
 
 DEAL_STATUSES = {"qualified", "proposal_sent", "negotiating", "won", "lost"}
-
-
-async def verify_internal_key(x_internal_key: str = Header(...)) -> None:
-    """Verify internal API key."""
-    if not settings.INTERNAL_API_KEY:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Internal API not configured",
-        )
-    if x_internal_key != settings.INTERNAL_API_KEY:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid internal API key",
-        )
 
 
 class CalAttendee(BaseModel):
@@ -216,7 +203,7 @@ def _get_existing_meeting_context(
     }
 
 
-@router.get("/resolve-org", dependencies=[Depends(verify_internal_key)])
+@router.get("/resolve-org", dependencies=[Depends(verify_token)])
 async def resolve_org_from_event_type(event_type_id: int = Query(..., ge=1)) -> dict[str, Any]:
     """Resolve SERX org context from a Cal.com event type."""
     if not settings.CAL_API_KEY:
@@ -321,7 +308,7 @@ async def resolve_org_from_event_type(event_type_id: int = Query(..., ge=1)) -> 
     }
 
 
-@router.get("/resolve-org-from-team", dependencies=[Depends(verify_internal_key)])
+@router.get("/resolve-org-from-team", dependencies=[Depends(verify_token)])
 async def resolve_org_from_team(cal_team_id: int = Query(..., ge=1)) -> dict[str, Any]:
     """Resolve SERX org context directly from a Cal.com team ID."""
     supabase = get_supabase()
@@ -356,7 +343,7 @@ async def resolve_org_from_team(cal_team_id: int = Query(..., ge=1)) -> dict[str
     }
 
 
-@router.post("/orgs/{org_id}/meetings/from-cal-event", dependencies=[Depends(verify_internal_key)])
+@router.post("/orgs/{org_id}/meetings/from-cal-event", dependencies=[Depends(verify_token)])
 async def create_meeting_from_cal_event(org_id: str, body: MeetingFromCalEventRequest) -> dict[str, Any]:
     """Create (or de-duplicate) a meeting from Cal.com booking payload data."""
     if body.status not in MEETING_STATUSES:
@@ -606,7 +593,7 @@ async def create_meeting_from_cal_event(org_id: str, body: MeetingFromCalEventRe
     }
 
 
-@router.put("/orgs/{org_id}/meetings/{meeting_id}", dependencies=[Depends(verify_internal_key)])
+@router.put("/orgs/{org_id}/meetings/{meeting_id}", dependencies=[Depends(verify_token)])
 async def update_meeting(org_id: str, meeting_id: str, body: MeetingUpdateRequest) -> dict[str, Any]:
     """Update meeting status/links/notes for internal orchestration."""
     supabase = get_supabase()
@@ -666,7 +653,7 @@ async def update_meeting(org_id: str, meeting_id: str, body: MeetingUpdateReques
 
 @router.get(
     "/orgs/{org_id}/meetings/by-cal-uid/{cal_event_uid}",
-    dependencies=[Depends(verify_internal_key)],
+    dependencies=[Depends(verify_token)],
 )
 async def get_meeting_by_cal_uid(org_id: str, cal_event_uid: str) -> dict[str, Any]:
     """Find a meeting by Cal.com event UID."""
@@ -686,7 +673,7 @@ async def get_meeting_by_cal_uid(org_id: str, cal_event_uid: str) -> dict[str, A
 
 @router.get(
     "/orgs/{org_id}/meetings/by-cal-booking-id/{cal_booking_id}",
-    dependencies=[Depends(verify_internal_key)],
+    dependencies=[Depends(verify_token)],
 )
 async def get_meeting_by_cal_booking_id(org_id: str, cal_booking_id: int) -> dict[str, Any]:
     """Find a meeting by Cal.com numeric booking ID."""
@@ -704,7 +691,7 @@ async def get_meeting_by_cal_booking_id(org_id: str, cal_booking_id: int) -> dic
     return result.data[0]
 
 
-@router.post("/orgs/{org_id}/deals", dependencies=[Depends(verify_internal_key)])
+@router.post("/orgs/{org_id}/deals", dependencies=[Depends(verify_token)])
 async def create_deal_from_meeting(org_id: str, body: DealCreateRequest) -> dict[str, Any]:
     """Create a deal from a qualified meeting and link meeting.deal_id."""
     supabase = get_supabase()
@@ -845,7 +832,7 @@ def _build_deal_context(supabase: Any, org_id: str, deal: dict[str, Any]) -> dic
     }
 
 
-@router.get("/orgs/{org_id}/deals/{deal_id}", dependencies=[Depends(verify_internal_key)])
+@router.get("/orgs/{org_id}/deals/{deal_id}", dependencies=[Depends(verify_token)])
 async def get_deal(org_id: str, deal_id: str) -> dict[str, Any]:
     """Get deal with rich related context for downstream agents."""
     supabase = get_supabase()
@@ -863,7 +850,7 @@ async def get_deal(org_id: str, deal_id: str) -> dict[str, Any]:
     return _build_deal_context(supabase, org_id, deal_result.data[0])
 
 
-@router.put("/orgs/{org_id}/deals/{deal_id}", dependencies=[Depends(verify_internal_key)])
+@router.put("/orgs/{org_id}/deals/{deal_id}", dependencies=[Depends(verify_token)])
 async def update_deal(org_id: str, deal_id: str, body: DealUpdateRequest) -> dict[str, Any]:
     """Update deal fields and enforce lifecycle transitions."""
     supabase = get_supabase()
@@ -915,7 +902,7 @@ async def update_deal(org_id: str, deal_id: str, body: DealUpdateRequest) -> dic
 
 @router.put(
     "/orgs/{org_id}/deals/{deal_id}/proposal",
-    dependencies=[Depends(verify_internal_key)],
+    dependencies=[Depends(verify_token)],
 )
 async def link_proposal_to_deal(
     org_id: str,

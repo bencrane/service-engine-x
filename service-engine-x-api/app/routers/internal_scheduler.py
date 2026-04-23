@@ -18,31 +18,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
 import httpx
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
+from app.auth import verify_token
 from app.config import settings
 from app.database import get_supabase
 
 router = APIRouter(prefix="/api/internal/scheduler", tags=["Internal Scheduler"])
-
-
-# ────────────────────────────────────────────────────────────────────────────
-# Auth — Bearer token matching INTERNAL_API_KEY.
-# ────────────────────────────────────────────────────────────────────────────
-
-async def verify_scheduler_token(authorization: str = Header(...)) -> None:
-    if not settings.INTERNAL_API_KEY:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Scheduler endpoint not configured",
-        )
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "bearer" or token != settings.INTERNAL_API_KEY:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid scheduler token",
-        )
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -313,7 +296,7 @@ async def _run_event_dispatch(cfg: EventConfig) -> DispatchSummary:
 
 @router.post(
     "/dispatch-due-preframes",
-    dependencies=[Depends(verify_scheduler_token)],
+    dependencies=[Depends(verify_token)],
     response_model=DispatchSummary,
 )
 async def dispatch_due_preframes() -> DispatchSummary:

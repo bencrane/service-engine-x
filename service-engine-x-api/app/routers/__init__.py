@@ -1,7 +1,6 @@
 """API routers."""
 
 from app.routers.accounts import router as accounts_router
-from app.routers.auth import router as auth_router
 from app.routers.bank_details import router as bank_details_router
 from app.routers.cal_webhooks import router as cal_webhooks_router
 from app.routers.calcom_webhooks import router as calcom_webhooks_router
@@ -20,15 +19,16 @@ from app.routers.meetings import router as meetings_router
 from app.routers.order_messages import router as order_messages_router
 from app.routers.order_tasks import router as order_tasks_router
 from app.routers.orders import router as orders_router
+from app.routers.orgs import router as orgs_router
 from app.routers.projects import router as projects_router
 from app.routers.proposals import public_router as public_proposals_router
 from app.routers.proposals import router as proposals_router
 from app.routers.proposals import webhook_router as webhooks_router
 from app.routers.services import router as services_router
 from app.routers.tickets import router as tickets_router
+from app.routers.users import router as users_router
 
 __all__ = [
-    "auth_router",
     "health_router",
     "clients_router",
     "services_router",
@@ -54,4 +54,6 @@ __all__ = [
     "internal_scheduler_router",
     "internal_webhook_events_router",
     "meetings_router",
+    "orgs_router",
+    "users_router",
 ]

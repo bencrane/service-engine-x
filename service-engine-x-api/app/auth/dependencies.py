@@ -1,14 +1,11 @@
 """Authentication dependencies for FastAPI."""
 
+import secrets
 from dataclasses import dataclass
-from datetime import datetime, timezone
 
-import jwt as pyjwt
-from fastapi import Header, HTTPException, status
+from fastapi import Header, HTTPException, Query, status
 
-from app.auth.jwt import decode_access_token
-from app.auth.utils import extract_bearer_token, hash_token
-from app.database import get_supabase
+from app.config import settings
 
 
 @dataclass
@@ -17,157 +14,49 @@ class AuthContext:
 
     org_id: str
     user_id: str
-    token_id: str | None = None
-    auth_method: str = "api_token"  # "api_token" or "session"
 
 
-def _validate_api_token(token: str) -> AuthContext | None:
-    """
-    Validate an API token (SHA-256 hashed bearer token).
-
-    Returns AuthContext on success, None if token not found or expired.
-    """
-    token_hash = hash_token(token)
-    supabase = get_supabase()
-
-    result = (
-        supabase.table("api_tokens")
-        .select("id, user_id, org_id, expires_at")
-        .eq("token_hash", token_hash)
-        .execute()
-    )
-
-    if not result.data or len(result.data) == 0:
+def _extract_bearer(authorization: str | None) -> str | None:
+    if not authorization or not authorization.startswith("Bearer "):
         return None
-
-    token_data = result.data[0]
-
-    # Check expiration
-    if token_data.get("expires_at"):
-        expires_at = datetime.fromisoformat(token_data["expires_at"].replace("Z", "+00:00"))
-        if expires_at < datetime.now(timezone.utc):
-            return None
-
-    # Update last_used_at
-    supabase.table("api_tokens").update(
-        {"last_used_at": datetime.now(timezone.utc).isoformat()}
-    ).eq("id", token_data["id"]).execute()
-
-    return AuthContext(
-        org_id=token_data["org_id"],
-        user_id=token_data["user_id"],
-        token_id=token_data["id"],
-        auth_method="api_token",
-    )
+    return authorization[7:]
 
 
-def _validate_jwt(token: str) -> AuthContext | None:
+def _check_token(authorization: str | None) -> None:
+    token = _extract_bearer(authorization)
+    expected = settings.SERX_AUTH_TOKEN
+    if not token or not expected or not secrets.compare_digest(token, expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unauthorized",
+        )
+
+
+async def verify_token(
+    authorization: str | None = Header(None, alias="Authorization"),
+) -> None:
     """
-    Validate a JWT session token.
+    Validate the shared API token. Token-only, no org/user scoping.
 
-    Returns AuthContext on success, None if token is invalid or expired.
+    Use this for endpoints that don't operate on a specific org
+    (listing all orgs/users, scheduler dispatch, webhook receivers, etc.).
     """
-    try:
-        payload = decode_access_token(token)
-    except (pyjwt.ExpiredSignatureError, pyjwt.InvalidTokenError):
-        return None
-
-    # Ensure this is a session token, not something else
-    if payload.get("type") != "session":
-        return None
-
-    user_id = payload.get("sub")
-    org_id = payload.get("org_id")
-
-    if not user_id or not org_id:
-        return None
-
-    return AuthContext(
-        org_id=org_id,
-        user_id=user_id,
-        token_id=None,
-        auth_method="session",
-    )
+    _check_token(authorization)
 
 
 async def get_current_org(
     authorization: str | None = Header(None, alias="Authorization"),
+    org_id: str = Query(..., description="Target organization UUID"),
+    user_id: str = Query(..., description="Acting user UUID"),
 ) -> AuthContext:
     """
-    Validate API token and return authentication context.
+    Validate the shared API token and return caller-supplied org/user context.
 
-    This is the original auth dependency — API tokens only.
-    Kept for backwards compatibility with machine-to-machine integrations.
+    The caller is trusted (single-consumer deployment). Token proves the caller
+    is hq-ops-internal-app; org_id and user_id say which slice of data to operate on.
     """
-    token = extract_bearer_token(authorization)
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized",
-        )
-
-    auth = _validate_api_token(token)
-    if not auth:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized",
-        )
-
-    return auth
+    _check_token(authorization)
+    return AuthContext(org_id=org_id, user_id=user_id)
 
 
-async def get_current_user(
-    authorization: str | None = Header(None, alias="Authorization"),
-) -> AuthContext:
-    """
-    Validate JWT session token and return authentication context.
-
-    Use this for endpoints that require a logged-in user session (customer portal).
-    """
-    token = extract_bearer_token(authorization)
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized",
-        )
-
-    auth = _validate_jwt(token)
-    if not auth:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired session",
-        )
-
-    return auth
-
-
-async def get_current_auth(
-    authorization: str | None = Header(None, alias="Authorization"),
-) -> AuthContext:
-    """
-    Dual auth: accepts either a JWT session token or an API token.
-
-    Tries JWT first (cheap — no DB call), falls back to API token lookup.
-    Use this on any endpoint that should accept both auth methods.
-    """
-    token = extract_bearer_token(authorization)
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized",
-        )
-
-    # Try JWT first (no DB call — fast path)
-    auth = _validate_jwt(token)
-    if auth:
-        return auth
-
-    # Fall back to API token
-    auth = _validate_api_token(token)
-    if auth:
-        return auth
-
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Unauthorized",
-    )
+get_current_auth = get_current_org
