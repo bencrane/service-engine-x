@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.1",
-    "@trigger.dev/sdk": "^4.4.4",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -28,7 +27,6 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
-    "@trigger.dev/build": "^4.4.4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^25.0.9",
     "@types/react": "^19.2.8",
