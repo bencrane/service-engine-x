@@ -50,9 +50,9 @@ def _serialize_deal(deal: dict[str, Any] | None) -> DealSummary | None:
         return None
     return DealSummary(
         id=deal["id"],
-        name=deal.get("name"),
-        stage=deal.get("stage"),
-        amount=format_currency_optional(deal.get("amount")),
+        name=deal.get("title"),
+        stage=deal.get("status"),
+        amount=format_currency_optional(deal.get("value")),
     )
 
 
@@ -117,7 +117,7 @@ _SELECT_WITH_RELATIONS = (
     "*, "
     "account:accounts(id, name, lifecycle), "
     "contact:contacts(id, name_f, name_l, email), "
-    "deal:deals(id, name, stage, amount)"
+    "deal:deals(id, title, status, value)"
 )
 
 
