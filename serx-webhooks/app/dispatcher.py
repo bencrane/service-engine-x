@@ -81,7 +81,7 @@ def dispatch_event(row_id: str, source: str, trigger_event: str | None) -> None:
 
 
 def _dispatch_event_inner(row_id: str, source: str, trigger_event: str | None) -> None:
-    if not settings.MANAGED_AGENTS_DISPATCH_ENABLED or not settings.MAG_AUTH_TOKEN:
+    if not settings.MANAGED_AGENTS_DISPATCH_ENABLED or not settings.OPEX_AUTH_TOKEN:
         update_dispatch_result(row_id, "dispatch_disabled")
         logger.info("dispatch_disabled row_id=%s source=%s", row_id, source)
         return
@@ -97,9 +97,9 @@ def _dispatch_event_inner(row_id: str, source: str, trigger_event: str | None) -
         "event_name": event_name,
         "event_ref": {"store": _EVENT_STORE, "id": row_id},
     }
-    url = f"{settings.MANAGED_AGENTS_API_BASE_URL.rstrip('/')}{_DISPATCH_PATH}"
+    url = f"{settings.OPEX_API_URL.rstrip('/')}{_DISPATCH_PATH}"
     headers = {
-        "Authorization": f"Bearer {settings.MAG_AUTH_TOKEN}",
+        "Authorization": f"Bearer {settings.OPEX_AUTH_TOKEN}",
         "Content-Type": "application/json",
     }
 
