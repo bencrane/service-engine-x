@@ -12,6 +12,7 @@ means appending an `EventConfig` below, not restructuring the endpoint.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
@@ -129,15 +130,22 @@ def _insert_webhook_event(
 ) -> tuple[str | None, bool]:
     """Insert synthetic webhook event. Returns (row_id, was_duplicate)."""
     payload = cfg.build_payload(meeting, now)
+    # event_key gives us idempotency via the (source, event_key) unique constraint
+    # on webhook_events_raw — overlapping ticks surface as duplicate-key errors.
+    event_key = f"serx_scheduler:{cfg.event_name}:{meeting['id']}"
+    raw_body_bytes = json.dumps(payload, default=str).encode("utf-8")
+    # webhook_events_raw.raw_body is bytea NOT NULL. Postgres accepts '\xDEADBEEF'
+    # hex-format for bytea literals; PostgREST passes the string through.
     insert_result = (
         supabase.table("webhook_events_raw")
         .insert(
             {
                 "source": "serx_scheduler",
-                "event_name": cfg.event_name,
+                "trigger_event": cfg.event_name,
+                "event_key": event_key,
                 "payload": payload,
+                "raw_body": "\\x" + raw_body_bytes.hex(),
                 "dispatch_status": "pending",
-                "dispatch_attempt_count": 0,
             }
         )
         .execute()
@@ -154,7 +162,6 @@ def _update_dispatch_outcome(
     *,
     status_value: str,
     session_id: str | None,
-    increment_attempt: bool,
     last_error: str | None = None,
 ) -> None:
     patch: dict[str, Any] = {
@@ -162,20 +169,9 @@ def _update_dispatch_outcome(
         "dispatched_at": datetime.now(timezone.utc).isoformat(),
     }
     if session_id is not None:
-        patch["session_id"] = session_id
+        patch["dispatched_session_id"] = session_id
     if last_error is not None:
-        patch["last_dispatch_error"] = last_error[:2000]
-    if increment_attempt:
-        # Read-modify-write — Supabase Python client has no native atomic inc.
-        current = (
-            supabase.table("webhook_events_raw")
-            .select("dispatch_attempt_count")
-            .eq("id", event_id)
-            .limit(1)
-            .execute()
-        )
-        prev = (current.data or [{}])[0].get("dispatch_attempt_count") or 0
-        patch["dispatch_attempt_count"] = prev + 1
+        patch["dispatch_error"] = last_error[:2000]
 
     supabase.table("webhook_events_raw").update(patch).eq("id", event_id).execute()
 
@@ -255,7 +251,6 @@ async def _run_event_dispatch(cfg: EventConfig) -> DispatchSummary:
                         event_id,
                         status_value="failed",
                         session_id=None,
-                        increment_attempt=True,
                         last_error=f"request_error: {exc}",
                     )
                     errors.append(
@@ -272,7 +267,6 @@ async def _run_event_dispatch(cfg: EventConfig) -> DispatchSummary:
                         event_id,
                         status_value="dispatched",
                         session_id=session_id,
-                        increment_attempt=True,
                     )
                     dispatched += 1
                 elif code == 404:
@@ -281,7 +275,6 @@ async def _run_event_dispatch(cfg: EventConfig) -> DispatchSummary:
                         event_id,
                         status_value="no_route",
                         session_id=None,
-                        increment_attempt=True,
                     )
                     no_route += 1
                 else:
@@ -291,7 +284,6 @@ async def _run_event_dispatch(cfg: EventConfig) -> DispatchSummary:
                         event_id,
                         status_value="failed",
                         session_id=None,
-                        increment_attempt=True,
                         last_error=f"http_{code}: {body}",
                     )
                     errors.append(
