@@ -15,9 +15,9 @@ class Settings(BaseSettings):
     # BackgroundTask — upstream 202 does not wait on it.
     OPEX_API_URL: str = "https://api.managedagents.run"
     OPEX_AUTH_TOKEN: str = ""
-    MANAGED_AGENTS_DISPATCH_ENABLED: bool = True
-    MANAGED_AGENTS_DISPATCH_TIMEOUT_SECONDS: float = 10.0
-    MANAGED_AGENTS_DISPATCH_MAX_ATTEMPTS: int = 3
+    OPEX_DISPATCH_ENABLED: bool = True
+    OPEX_DISPATCH_TIMEOUT_SECONDS: float = 10.0
+    OPEX_DISPATCH_MAX_ATTEMPTS: int = 3
 
     # Runtime
     PORT: int = 8000

@@ -81,7 +81,7 @@ def dispatch_event(row_id: str, source: str, trigger_event: str | None) -> None:
 
 
 def _dispatch_event_inner(row_id: str, source: str, trigger_event: str | None) -> None:
-    if not settings.MANAGED_AGENTS_DISPATCH_ENABLED or not settings.OPEX_AUTH_TOKEN:
+    if not settings.OPEX_DISPATCH_ENABLED or not settings.OPEX_AUTH_TOKEN:
         update_dispatch_result(row_id, "dispatch_disabled")
         logger.info("dispatch_disabled row_id=%s source=%s", row_id, source)
         return
@@ -103,10 +103,10 @@ def _dispatch_event_inner(row_id: str, source: str, trigger_event: str | None) -
         "Content-Type": "application/json",
     }
 
-    max_attempts = max(settings.MANAGED_AGENTS_DISPATCH_MAX_ATTEMPTS, 1)
+    max_attempts = max(settings.OPEX_DISPATCH_MAX_ATTEMPTS, 1)
     last_error: str | None = None
 
-    with httpx.Client(timeout=settings.MANAGED_AGENTS_DISPATCH_TIMEOUT_SECONDS) as client:
+    with httpx.Client(timeout=settings.OPEX_DISPATCH_TIMEOUT_SECONDS) as client:
         for attempt in range(1, max_attempts + 1):
             t0 = time.monotonic()
             try:
