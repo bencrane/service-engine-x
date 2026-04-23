@@ -23,6 +23,17 @@ class Settings(BaseSettings):
     # Internal
     INTERNAL_API_KEY: str = ""
 
+    # Managed agents dispatch (used by scheduler endpoint)
+    OPEX_API_URL: str = ""
+    OPEX_AUTH_TOKEN: str = ""
+
+    # Scheduler windows — all overridable via env
+    SCHEDULER_PREFRAME_WINDOW_START_HOURS: int = 4
+    SCHEDULER_PREFRAME_WINDOW_END_HOURS: int = 5
+    SCHEDULER_PREFRAME_MIN_AGE_HOURS: int = 2
+    SCHEDULER_MAX_DISPATCH_ATTEMPTS: int = 5
+    SCHEDULER_DISPATCH_TIMEOUT_SECONDS: float = 15.0
+
     # Third-party
     RESEND_API_KEY: str = ""
     DOCRAPTOR_API_KEY: str = ""
