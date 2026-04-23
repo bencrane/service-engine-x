@@ -20,7 +20,7 @@ from app.database import get_supabase
 logger = logging.getLogger("serx_webhooks.dispatcher")
 
 _RETRYABLE_STATUS = {500, 502, 503, 504}
-_DISPATCH_PATH = "/sessions/from-event"
+_DISPATCH_PATH = "/events/receive"
 _EVENT_STORE = "serx_webhook_events_raw"
 
 
