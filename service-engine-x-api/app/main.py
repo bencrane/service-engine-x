@@ -23,8 +23,10 @@ from app.routers import (
     internal_cal_events_router,
     internal_meetings_deals_router,
     internal_router,
+    internal_scheduler_router,
     internal_webhook_events_router,
     invoices_router,
+    meetings_router,
     order_messages_router,
     order_tasks_router,
     orders_router,
@@ -134,12 +136,14 @@ app.include_router(conversations_router)
 app.include_router(internal_router)  # Internal admin API
 app.include_router(accounts_router)  # Accounts (CRM companies)
 app.include_router(contacts_router)  # Contacts (people at accounts)
+app.include_router(meetings_router)  # Meetings (public list/get + upcoming)
 app.include_router(bank_details_router)  # Org bank details (wire/ACH)
 app.include_router(cal_webhooks_router)  # Cal.com webhook receiver (HMAC + agent routing)
 app.include_router(calcom_webhooks_router)  # Cal.com legacy webhook sink (raw capture)
 app.include_router(internal_cal_events_router)  # Internal Cal.com normalization API
 app.include_router(internal_meetings_deals_router)  # Internal meetings/deals + org resolution
 app.include_router(internal_webhook_events_router)  # Internal read of serx-webhooks webhook_events_raw
+app.include_router(internal_scheduler_router)  # Time-based event dispatcher (Trigger.dev ticker → MAG)
 
 
 def custom_openapi() -> dict:
@@ -232,6 +236,8 @@ async def api_index() -> dict:
             "conversations": "/api/conversations",
             "accounts": "/api/accounts",
             "contacts": "/api/contacts",
+            "meetings": "/api/meetings",
+            "meetings_upcoming": "/api/meetings/upcoming",
             "bank_details": "/api/bank-details",
             "openapi": "/api/openapi.json",
         },
