@@ -3,7 +3,7 @@
 The Trigger.dev ticker is a dumb clock — it only POSTs here. This module owns:
   1. Querying due meetings per event-config (window, status, idempotency column).
   2. Inserting synthetic rows into webhook_events_raw with source='serx_scheduler'.
-  3. Dispatching each row to managed-agents-x-api /sessions/from-event.
+  3. Dispatching each row to managed-agents-x-api /events/receive.
   4. Recording dispatch outcomes (dispatched / no_route / failed) for observability.
 
 Adding a new time-based event (e.g. meeting_reminder_due, no_show_nudge_due)
@@ -180,7 +180,7 @@ async def _dispatch_to_managed_agents(
     client: httpx.AsyncClient, cfg: EventConfig, event_id: str
 ) -> tuple[int, dict[str, Any] | None]:
     response = await client.post(
-        f"{settings.OPEX_API_URL.rstrip('/')}/sessions/from-event",
+        f"{settings.OPEX_API_URL.rstrip('/')}/events/receive",
         headers={
             "Authorization": f"Bearer {settings.OPEX_AUTH_TOKEN}",
             "Content-Type": "application/json",
