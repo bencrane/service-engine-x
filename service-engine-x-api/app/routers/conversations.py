@@ -207,7 +207,7 @@ async def list_conversations(
         for c in conversations
     ]
 
-    path = f"{settings.API_BASE_URL}/api/projects/{project_id}/conversations"
+    path = f"{settings.SERX_API_BASE_URL}/api/projects/{project_id}/conversations"
     return build_pagination_response(serialized, total, page, limit, path)
 
 
@@ -564,7 +564,7 @@ async def list_messages(
         for m in messages_raw
     ]
 
-    path = f"{settings.API_BASE_URL}/api/projects/{project_id}/conversations/{conversation_id}/messages"
+    path = f"{settings.SERX_API_BASE_URL}/api/projects/{project_id}/conversations/{conversation_id}/messages"
     return build_pagination_response(serialized, total, page, limit, path)
 
 

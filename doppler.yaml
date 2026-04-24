@@ -1,0 +1,3 @@
+setup:
+  project: service-engine-x-api
+  config: prd

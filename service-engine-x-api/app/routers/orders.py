@@ -265,7 +265,7 @@ async def list_orders(
         order_resp = await serialize_order(supabase, o)
         serialized.append(order_resp.model_dump())
 
-    path = f"{settings.API_BASE_URL}/api/orders"
+    path = f"{settings.SERX_API_BASE_URL}/api/orders"
     return build_pagination_response(serialized, total, page, limit, path)
 
 

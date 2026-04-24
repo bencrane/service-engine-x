@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
     # API
-    API_BASE_URL: str = "http://localhost:8000"
+    SERX_API_BASE_URL: str
     DEBUG: bool = False
     APP_NAME: str = "Service Engine X API"
     APP_VERSION: str = "1.0.0"

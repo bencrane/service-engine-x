@@ -155,7 +155,7 @@ async def list_accounts(
     # Serialize
     serialized = [serialize_account_list(a).model_dump() for a in accounts]
 
-    path = f"{settings.API_BASE_URL}/api/accounts"
+    path = f"{settings.SERX_API_BASE_URL}/api/accounts"
     return build_pagination_response(serialized, total, page, limit, path)
 
 

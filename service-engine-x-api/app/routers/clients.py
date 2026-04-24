@@ -239,7 +239,7 @@ async def list_clients(
         )
 
     # Build pagination response
-    path = f"{settings.API_BASE_URL}/api/clients"
+    path = f"{settings.SERX_API_BASE_URL}/api/clients"
     return build_pagination_response(serialized, total, page, limit, path)
 
 

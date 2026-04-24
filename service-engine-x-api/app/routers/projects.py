@@ -161,7 +161,7 @@ async def list_projects(
         for p in projects
     ]
 
-    path = f"{settings.API_BASE_URL}/api/projects"
+    path = f"{settings.SERX_API_BASE_URL}/api/projects"
     return build_pagination_response(serialized, total, page, limit, path)
 
 

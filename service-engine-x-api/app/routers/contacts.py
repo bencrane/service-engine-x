@@ -170,7 +170,7 @@ async def list_contacts(
     # Serialize
     serialized = [serialize_contact_list(c).model_dump() for c in contacts]
 
-    path = f"{settings.API_BASE_URL}/api/contacts"
+    path = f"{settings.SERX_API_BASE_URL}/api/contacts"
     return build_pagination_response(serialized, total, page, limit, path)
 
 

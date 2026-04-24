@@ -202,7 +202,7 @@ async def list_engagements(
             serialize_engagement(eng, client=client_data, account=account_data, include_nested=False).model_dump()
         )
 
-    path = f"{settings.API_BASE_URL}/api/engagements"
+    path = f"{settings.SERX_API_BASE_URL}/api/engagements"
     return build_pagination_response(serialized, total, page, limit, path)
 
 

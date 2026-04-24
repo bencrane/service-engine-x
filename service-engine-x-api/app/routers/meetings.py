@@ -243,7 +243,7 @@ async def list_meetings(
     rows = result.data or []
 
     serialized = [serialize_meeting_list(row).model_dump() for row in rows]
-    path = f"{settings.API_BASE_URL}/api/meetings"
+    path = f"{settings.SERX_API_BASE_URL}/api/meetings"
     return build_pagination_response(serialized, total, page, limit, path)
 
 

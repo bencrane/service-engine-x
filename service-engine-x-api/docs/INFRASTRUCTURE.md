@@ -197,7 +197,7 @@ SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
 # API Configuration
-API_BASE_URL=https://api.serviceengine.xyz
+SERX_API_BASE_URL=https://api.serviceengine.xyz
 DEBUG=false
 
 # Third-Party Services

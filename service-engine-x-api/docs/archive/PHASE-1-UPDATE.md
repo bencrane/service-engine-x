@@ -88,7 +88,7 @@ service-engine-x-api/
 ```env
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-API_BASE_URL=http://localhost:8000
+SERX_API_BASE_URL=http://localhost:8000
 DEBUG=true
 ```
 

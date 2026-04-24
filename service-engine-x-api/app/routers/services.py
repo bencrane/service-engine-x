@@ -188,7 +188,7 @@ async def list_services(
     serialized = [serialize_service(s).model_dump() for s in services]
 
     # Build pagination response
-    path = f"{settings.API_BASE_URL}/api/services"
+    path = f"{settings.SERX_API_BASE_URL}/api/services"
     return build_pagination_response(serialized, total, page, limit, path)
 
 
