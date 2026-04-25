@@ -4,7 +4,7 @@ export declare const env: {
     enablePrompts: boolean;
     NODE_ENV: "development" | "test" | "production";
     PORT: number;
-    SERX_MCP_SHARED_SECRET: string;
+    SERX_MCP_AUTH_TOKEN: string;
     SERX_INTERNAL_API_BASE_URL: string;
     SERX_INTERNAL_API_KEY: string;
     SERX_SERVICE_API_TOKEN: string;

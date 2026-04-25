@@ -11,7 +11,7 @@ Remote HTTP MCP server for Cal.com, built by proxying Cal.com's official stdio M
 Set these in Doppler:
 
 - `CAL_API_KEY` - Cal.com API key consumed by `@calcom/cal-mcp`
-- `CAL_MCP_API_KEY` - shared API key required by `mcp-proxy` auth
+- `CAL_MCP_AUTH_TOKEN` - shared auth token required by `mcp-proxy` auth
 - `PORT` - optional, defaults to `8080`
 
 On Railway, the only platform-level env var should be `DOPPLER_TOKEN`.
@@ -24,13 +24,13 @@ Use your Railway public URL with `/mcp`, for example:
 
 Authenticate with either header:
 
-- `X-API-Key: <CAL_MCP_API_KEY>`
-- `Authorization: Bearer <CAL_MCP_API_KEY>`
+- `X-API-Key: <CAL_MCP_AUTH_TOKEN>`
+- `Authorization: Bearer <CAL_MCP_AUTH_TOKEN>`
 
 Both work. A lightweight auth-proxy in front of mcp-proxy normalizes `Authorization: Bearer` → `X-API-Key` before forwarding.
 
 ## Local development
 
 ```bash
-CAL_API_KEY=xxx CAL_MCP_API_KEY=xxx ./start.sh
+CAL_API_KEY=xxx CAL_MCP_AUTH_TOKEN=xxx ./start.sh
 ```

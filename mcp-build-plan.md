@@ -92,7 +92,7 @@ Use a new TypeScript service in this monorepo, deployed as a separate Railway se
 ### Doppler/env variable flow
 
 - Doppler project config injects:
-  - `SERX_MCP_SHARED_SECRET` (inbound auth from Managed Agents)
+  - `SERX_MCP_AUTH_TOKEN` (inbound auth from Managed Agents)
   - `SERX_INTERNAL_API_BASE_URL` (internal API target)
   - `SERX_INTERNAL_API_KEY` (for `x-internal-key` calls)
   - `SERX_SERVICE_API_TOKEN` (for Next.js routes protected by bearer token auth)
@@ -108,7 +108,7 @@ Use a new TypeScript service in this monorepo, deployed as a separate Railway se
 ## 3.1 Inbound auth (Managed Agent session -> MCP)
 
 - Use a bearer secret header for MCP server access:
-  - `Authorization: Bearer <SERX_MCP_SHARED_SECRET>`
+  - `Authorization: Bearer <SERX_MCP_AUTH_TOKEN>`
 - Reject unauthenticated calls with actionable text:
   - `"Unauthorized MCP request. Configure Managed Agent connector header Authorization: Bearer <vault secret>."`
 - Optional hardening:

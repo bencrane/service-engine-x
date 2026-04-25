@@ -2,7 +2,7 @@ import { z } from "zod";
 const EnvSchema = z.object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     PORT: z.coerce.number().int().positive().default(3011),
-    SERX_MCP_SHARED_SECRET: z.string().min(1),
+    SERX_MCP_AUTH_TOKEN: z.string().min(1),
     SERX_INTERNAL_API_BASE_URL: z.string().url(),
     SERX_INTERNAL_API_KEY: z.string().min(1),
     SERX_SERVICE_API_TOKEN: z.string().min(1),

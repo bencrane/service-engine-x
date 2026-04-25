@@ -2,7 +2,7 @@
 set -euo pipefail
 
 : "${CAL_API_KEY:?CAL_API_KEY is required}"
-: "${CAL_MCP_API_KEY:?CAL_MCP_API_KEY is required}"
+: "${CAL_MCP_AUTH_TOKEN:?CAL_MCP_AUTH_TOKEN is required}"
 
 export MCP_PROXY_PORT=9090
 
@@ -13,7 +13,7 @@ trap cleanup EXIT
 npx mcp-proxy \
   --port "${MCP_PROXY_PORT}" \
   --host 127.0.0.1 \
-  --apiKey "${CAL_MCP_API_KEY}" \
+  --apiKey "${CAL_MCP_AUTH_TOKEN}" \
   -- \
   npx @calcom/cal-mcp --all-tools &
 MCP_PID=$!
