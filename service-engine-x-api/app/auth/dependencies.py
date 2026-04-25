@@ -200,6 +200,115 @@ async def get_current_auth_jwt(
     )
 
 
+def _matches_legacy_token(token: str) -> bool:
+    """Constant-time check against ``SERX_AUTH_TOKEN``. Returns False when the
+    secret is unset (so missing-config never silently authorizes anyone).
+    """
+    expected = settings.SERX_AUTH_TOKEN
+    if not expected:
+        return False
+    return secrets.compare_digest(token, expected)
+
+
+def _matches_internal_bearer(token: str) -> bool:
+    """Constant-time check against ``SERX_INTERNAL_BEARER_TOKEN``. Returns
+    False when the secret is unset.
+    """
+    expected = settings.SERX_INTERNAL_BEARER_TOKEN
+    if not expected:
+        return False
+    return hmac.compare_digest(token, expected)
+
+
+async def verify_token_or_internal_bearer(
+    authorization: str | None = Header(None, alias="Authorization"),
+) -> None:
+    """Transitional auth dep for internal routes during the SERX_AUTH_TOKEN →
+    SERX_INTERNAL_BEARER_TOKEN cutover.
+
+    Accepts either token (constant-time comparison). Once all callers have
+    moved to ``SERX_INTERNAL_BEARER_TOKEN`` (Phase 3), routes swap to
+    :func:`require_internal_bearer` and the legacy path is removed.
+
+    Returns ``None`` to keep the call shape identical to ``verify_token``.
+    """
+    if not settings.SERX_AUTH_TOKEN and not settings.SERX_INTERNAL_BEARER_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "server_misconfigured: neither SERX_AUTH_TOKEN nor "
+                "SERX_INTERNAL_BEARER_TOKEN is set on API"
+            ),
+        )
+
+    token = _extract_bearer_token(authorization)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="missing_or_malformed_authorization_header",
+        )
+
+    if _matches_internal_bearer(token) or _matches_legacy_token(token):
+        return None
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="token_mismatch",
+    )
+
+
+async def get_current_org_or_internal_bearer(
+    authorization: str | None = Header(None, alias="Authorization"),
+    org_id: str = Query(..., description="Target organization UUID"),
+    user_id: str = Query(..., description="Acting user UUID"),
+) -> AuthContext:
+    """Transitional auth dep for tenant CRUD routes during cutover.
+
+    Accepts either ``SERX_AUTH_TOKEN`` (legacy) or ``SERX_INTERNAL_BEARER_TOKEN``
+    (new). In both cases the caller-supplied ``org_id`` / ``user_id`` query
+    params drive the returned :class:`AuthContext`, matching the existing
+    :func:`get_current_org` behavior so routers can swap deps without changing
+    function bodies. ``auth_method`` records which bearer authorized the call,
+    which is useful for migration telemetry.
+
+    Removed in Phase 3 once callers have moved off ``SERX_AUTH_TOKEN``.
+    """
+    if not settings.SERX_AUTH_TOKEN and not settings.SERX_INTERNAL_BEARER_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "server_misconfigured: neither SERX_AUTH_TOKEN nor "
+                "SERX_INTERNAL_BEARER_TOKEN is set on API"
+            ),
+        )
+
+    token = _extract_bearer_token(authorization)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="missing_or_malformed_authorization_header",
+        )
+
+    if _matches_internal_bearer(token):
+        return AuthContext(
+            org_id=org_id,
+            user_id=user_id,
+            auth_method="internal_bearer",
+        )
+
+    if _matches_legacy_token(token):
+        return AuthContext(
+            org_id=org_id,
+            user_id=user_id,
+            auth_method="shared_token",
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="token_mismatch",
+    )
+
+
 # Legacy alias retained so existing routers keep their current behavior during
 # Phase 1. Routes are migrated to ``get_current_auth_jwt`` in Phase 2/3.
 get_current_auth = get_current_org
