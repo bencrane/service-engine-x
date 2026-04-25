@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 
-from app.auth import verify_token
+from app.auth import verify_token_or_internal_bearer
 from app.database import get_supabase
 
 router = APIRouter(prefix="/api/internal/cal", tags=["Internal Cal.com"])
@@ -301,7 +301,7 @@ class RecordingUpdateRequest(BaseModel):
     download_link: str | None = None
 
 
-@router.post("/events/raw", dependencies=[Depends(verify_token)])
+@router.post("/events/raw", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def create_raw_event(body: RawEventCreateRequest) -> dict[str, Any]:
     supabase = get_supabase()
     insert_payload = {
@@ -319,7 +319,7 @@ async def create_raw_event(body: RawEventCreateRequest) -> dict[str, Any]:
     return {"id": result.data[0]["id"], "event": result.data[0]}
 
 
-@router.get("/events/raw/unprocessed", dependencies=[Depends(verify_token)])
+@router.get("/events/raw/unprocessed", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def list_unprocessed_raw_events(limit: int = 100) -> list[dict[str, Any]]:
     bounded_limit = max(1, min(limit, 500))
     supabase = get_supabase()
@@ -336,7 +336,7 @@ async def list_unprocessed_raw_events(limit: int = 100) -> list[dict[str, Any]]:
 
 @router.patch(
     "/events/raw/{event_id}/processed",
-    dependencies=[Depends(verify_token)],
+    dependencies=[Depends(verify_token_or_internal_bearer)],
 )
 async def mark_raw_event_processed(
     event_id: UUID, body: RawEventProcessedRequest
@@ -356,7 +356,7 @@ async def mark_raw_event_processed(
     return result.data[0]
 
 
-@router.get("/raw-events/{event_id}", dependencies=[Depends(verify_token)])
+@router.get("/raw-events/{event_id}", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def get_cal_raw_event(event_id: UUID) -> dict[str, Any]:
     """Retrieve a single stored raw event from cal_raw_events by ID."""
     supabase = get_supabase()
@@ -372,7 +372,7 @@ async def get_cal_raw_event(event_id: UUID) -> dict[str, Any]:
     return result.data[0]
 
 
-@router.post("/booking-events", dependencies=[Depends(verify_token)])
+@router.post("/booking-events", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def create_booking_event(body: BookingEventCreateRequest) -> dict[str, Any]:
     merged = body.model_dump()
     raw_payload = merged.pop("raw_payload")
@@ -436,7 +436,7 @@ async def create_booking_event(body: BookingEventCreateRequest) -> dict[str, Any
     return created
 
 
-@router.get("/booking-events/by-uid/{cal_booking_uid}", dependencies=[Depends(verify_token)])
+@router.get("/booking-events/by-uid/{cal_booking_uid}", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def get_booking_events_by_uid(cal_booking_uid: str) -> dict[str, Any]:
     supabase = get_supabase()
     events_result = (
@@ -459,7 +459,7 @@ async def get_booking_events_by_uid(cal_booking_uid: str) -> dict[str, Any]:
 
 @router.get(
     "/booking-events/by-booking-id/{cal_booking_id}",
-    dependencies=[Depends(verify_token)],
+    dependencies=[Depends(verify_token_or_internal_bearer)],
 )
 async def get_booking_events_by_booking_id(cal_booking_id: int) -> list[dict[str, Any]]:
     supabase = get_supabase()
@@ -475,7 +475,7 @@ async def get_booking_events_by_booking_id(cal_booking_id: int) -> list[dict[str
 
 @router.get(
     "/booking-events/latest/by-uid/{cal_booking_uid}",
-    dependencies=[Depends(verify_token)],
+    dependencies=[Depends(verify_token_or_internal_bearer)],
 )
 async def get_latest_booking_event_by_uid(cal_booking_uid: str) -> dict[str, Any]:
     supabase = get_supabase()
@@ -492,7 +492,7 @@ async def get_latest_booking_event_by_uid(cal_booking_uid: str) -> dict[str, Any
     return result.data[0]
 
 
-@router.post("/booking-attendees/bulk", dependencies=[Depends(verify_token)])
+@router.post("/booking-attendees/bulk", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def bulk_upsert_booking_attendees(body: BookingAttendeesBulkRequest) -> dict[str, Any]:
     attendees = [item.model_dump() for item in body.attendees]
     if body.raw_payload and not attendees:
@@ -534,7 +534,7 @@ async def bulk_upsert_booking_attendees(body: BookingAttendeesBulkRequest) -> di
 
 @router.get(
     "/booking-attendees/by-uid/{cal_booking_uid}",
-    dependencies=[Depends(verify_token)],
+    dependencies=[Depends(verify_token_or_internal_bearer)],
 )
 async def get_booking_attendees_by_uid(cal_booking_uid: str) -> list[dict[str, Any]]:
     supabase = get_supabase()
@@ -549,7 +549,7 @@ async def get_booking_attendees_by_uid(cal_booking_uid: str) -> list[dict[str, A
     return result.data or []
 
 
-@router.post("/recordings", dependencies=[Depends(verify_token)])
+@router.post("/recordings", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def create_recording(body: RecordingCreateRequest) -> dict[str, Any]:
     merged = body.model_dump()
     raw_payload = merged.pop("raw_payload")
@@ -591,7 +591,7 @@ async def create_recording(body: RecordingCreateRequest) -> dict[str, Any]:
     return result.data[0]
 
 
-@router.get("/recordings/by-uid/{cal_booking_uid}", dependencies=[Depends(verify_token)])
+@router.get("/recordings/by-uid/{cal_booking_uid}", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def get_recordings_by_uid(cal_booking_uid: str) -> list[dict[str, Any]]:
     supabase = get_supabase()
     result = (
@@ -604,7 +604,7 @@ async def get_recordings_by_uid(cal_booking_uid: str) -> list[dict[str, Any]]:
     return result.data or []
 
 
-@router.patch("/recordings/{recording_id}", dependencies=[Depends(verify_token)])
+@router.patch("/recordings/{recording_id}", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def update_recording(recording_id: UUID, body: RecordingUpdateRequest) -> dict[str, Any]:
     payload = {"updated_at": _now_iso()}
     if body.status is not None:

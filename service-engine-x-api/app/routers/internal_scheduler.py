@@ -21,7 +21,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from app.auth import verify_token
+from app.auth import verify_token_or_internal_bearer
 from app.config import settings
 from app.database import get_supabase
 
@@ -296,7 +296,7 @@ async def _run_event_dispatch(cfg: EventConfig) -> DispatchSummary:
 
 @router.post(
     "/dispatch-due-preframes",
-    dependencies=[Depends(verify_token)],
+    dependencies=[Depends(verify_token_or_internal_bearer)],
     response_model=DispatchSummary,
 )
 async def dispatch_due_preframes() -> DispatchSummary:

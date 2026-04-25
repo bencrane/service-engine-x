@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 
-from app.auth import AuthContext, get_current_org
+from app.auth import AuthContext, get_current_org_or_internal_bearer
 from app.config import settings
 from app.database import get_supabase
 from app.models.orders import (
@@ -216,7 +216,7 @@ async def assign_tags(supabase, order_id: str, tag_names: list[str]) -> None:
 @router.get("")
 async def list_orders(
     request: Request,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
     limit: int = Query(20, ge=1, le=100),
     page: int = Query(1, ge=1),
     sort: str = Query("created_at:desc"),
@@ -272,7 +272,7 @@ async def list_orders(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_order(
     body: OrderCreate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> OrderResponse:
     """Create a new order."""
     supabase = get_supabase()
@@ -414,7 +414,7 @@ async def create_order(
 @router.get("/{order_id}")
 async def retrieve_order(
     order_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> OrderResponse:
     """Retrieve a single order by ID."""
     if not is_valid_uuid(order_id):
@@ -441,7 +441,7 @@ async def retrieve_order(
 async def update_order(
     order_id: str,
     body: OrderUpdate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> OrderResponse:
     """Update an existing order."""
     if not is_valid_uuid(order_id):
@@ -552,7 +552,7 @@ async def update_order(
 @router.delete("/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_order(
     order_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> Response:
     """Soft delete an order."""
     if not is_valid_uuid(order_id):
@@ -637,7 +637,7 @@ async def serialize_task(supabase, task: dict[str, Any]) -> OrderTaskResponse:
 @router.get("/{order_id}/tasks")
 async def list_order_tasks(
     order_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> list[OrderTaskResponse]:
     """List all tasks for an order."""
     if not is_valid_uuid(order_id):
@@ -678,7 +678,7 @@ async def list_order_tasks(
 async def create_order_task(
     order_id: str,
     body: OrderTaskCreate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> OrderTaskResponse:
     """Create a task for an order."""
     if not is_valid_uuid(order_id):
@@ -768,7 +768,7 @@ async def create_order_task(
 @router.get("/{order_id}/messages")
 async def list_order_messages(
     order_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> list[OrderMessageResponse]:
     """List all messages for an order."""
     if not is_valid_uuid(order_id):
@@ -821,7 +821,7 @@ async def list_order_messages(
 async def create_order_message(
     order_id: str,
     body: OrderMessageCreate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> OrderMessageResponse:
     """Create a message for an order."""
     if not is_valid_uuid(order_id):

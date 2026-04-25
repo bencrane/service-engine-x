@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
 
-from app.auth.dependencies import AuthContext, get_current_org
+from app.auth.dependencies import AuthContext, get_current_org_or_internal_bearer
 from app.database import get_supabase
 from app.utils import format_currency, format_currency_optional
 from app.models.invoices import (
@@ -198,7 +198,7 @@ async def generate_invoice_number(supabase: Any) -> str:
 @router.get("", response_model=InvoiceListResponse)
 async def list_invoices(
     request: Request,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
     limit: int = Query(default=20, ge=1, le=100),
     page: int = Query(default=1, ge=1),
     sort: str = Query(default="created_at:desc"),
@@ -277,7 +277,7 @@ async def list_invoices(
 @router.post("", response_model=InvoiceResponse, status_code=201)
 async def create_invoice(
     body: CreateInvoiceRequest,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> InvoiceResponse:
     """Create a new invoice."""
     supabase = get_supabase()
@@ -469,7 +469,7 @@ async def create_invoice(
 @router.get("/{invoice_id}", response_model=InvoiceResponse)
 async def retrieve_invoice(
     invoice_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> InvoiceResponse:
     """Retrieve an invoice by ID."""
     supabase = get_supabase()
@@ -488,7 +488,7 @@ async def retrieve_invoice(
 async def update_invoice(
     invoice_id: str,
     body: UpdateInvoiceRequest,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> InvoiceResponse:
     """Update an invoice."""
     supabase = get_supabase()
@@ -631,7 +631,7 @@ async def update_invoice(
 @router.delete("/{invoice_id}", status_code=204)
 async def delete_invoice(
     invoice_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> Response:
     """Soft delete an invoice."""
     supabase = get_supabase()
@@ -659,7 +659,7 @@ async def charge_invoice(
     invoice_id: str,
     body: ChargeInvoiceRequest,
     request: Request,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> InvoiceResponse:
     """Charge an invoice via payment processor."""
     supabase = get_supabase()
@@ -747,7 +747,7 @@ async def charge_invoice(
 @router.post("/{invoice_id}/mark_paid", response_model=InvoiceResponse)
 async def mark_invoice_paid(
     invoice_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> InvoiceResponse:
     """Mark an invoice as manually paid."""
     supabase = get_supabase()

@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 
-from app.auth import AuthContext, get_current_org
+from app.auth import AuthContext, get_current_org_or_internal_bearer
 from app.config import settings
 from app.database import get_supabase
 from app.models.clients import (
@@ -145,7 +145,7 @@ def generate_affiliate_link() -> str:
 @router.get("")
 async def list_clients(
     request: Request,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
     limit: int = Query(20, ge=1, le=100),
     page: int = Query(1, ge=1),
     sort: str = Query("created_at:desc"),
@@ -246,7 +246,7 @@ async def list_clients(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_client(
     body: ClientCreate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> ClientResponse:
     """Create a new client."""
     supabase = get_supabase()
@@ -341,7 +341,7 @@ async def create_client(
 @router.get("/{client_id}")
 async def retrieve_client(
     client_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> ClientResponse:
     """Retrieve a single client by ID."""
     if not is_valid_uuid(client_id):
@@ -394,7 +394,7 @@ async def retrieve_client(
 async def update_client(
     client_id: str,
     body: ClientUpdate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> ClientResponse:
     """Update an existing client."""
     if not is_valid_uuid(client_id):
@@ -551,7 +551,7 @@ async def update_client(
 @router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_client(
     client_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> Response:
     """Delete a client (hard delete with FK guard)."""
     if not is_valid_uuid(client_id):

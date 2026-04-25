@@ -11,7 +11,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 
-from app.auth.dependencies import AuthContext, get_current_org
+from app.auth.dependencies import AuthContext, get_current_org_or_internal_bearer
 from app.config import settings
 from app.database import get_supabase
 from app.utils import format_currency
@@ -763,7 +763,7 @@ def build_pagination_links(
 @router.get("", response_model=ProposalListResponse)
 async def list_proposals(
     request: Request,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
     limit: int = Query(default=20, ge=1, le=100),
     page: int = Query(default=1, ge=1),
     sort: str = Query(default="created_at:desc"),
@@ -848,7 +848,7 @@ async def list_proposals(
 @router.post("", response_model=ProposalResponse, status_code=201)
 async def create_proposal(
     body: CreateProposalRequest,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> ProposalResponse:
     """Create a new proposal."""
     supabase = get_supabase()
@@ -954,7 +954,7 @@ async def create_proposal(
 @router.get("/{proposal_id}", response_model=ProposalResponse)
 async def retrieve_proposal(
     proposal_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> ProposalResponse:
     """Retrieve a proposal by ID."""
     supabase = get_supabase()
@@ -976,7 +976,7 @@ async def retrieve_proposal(
 @router.get("/{proposal_id}/deliverables")
 async def get_proposal_deliverables(
     proposal_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> dict[str, Any]:
     """
     Get what was purchased from a signed proposal.
@@ -1098,7 +1098,7 @@ async def get_proposal_deliverables(
 @router.post("/{proposal_id}/send", response_model=ProposalResponse)
 async def send_proposal(
     proposal_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> ProposalResponse:
     """
     Send a proposal (Draft -> Sent).
@@ -1179,7 +1179,7 @@ async def send_proposal(
 @router.post("/{proposal_id}/sign")
 async def sign_proposal(
     proposal_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> dict[str, Any]:
     """
     Sign a proposal (Sent -> Signed).

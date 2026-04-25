@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 
-from app.auth import AuthContext, get_current_auth
+from app.auth import AuthContext, get_current_org_or_internal_bearer
 from app.config import settings
 from app.database import get_supabase
 from app.models.accounts import (
@@ -95,7 +95,7 @@ def serialize_contact_brief(contact: dict[str, Any]) -> ContactBrief:
 @router.get("")
 async def list_accounts(
     request: Request,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
     limit: int = Query(20, ge=1, le=100),
     page: int = Query(1, ge=1),
     sort: str = Query("created_at:desc"),
@@ -162,7 +162,7 @@ async def list_accounts(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_account(
     body: AccountCreate,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> AccountResponse:
     """Create a new account."""
     supabase = get_supabase()
@@ -228,7 +228,7 @@ async def create_account(
 @router.get("/{account_id}")
 async def retrieve_account(
     account_id: str,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> AccountWithContacts:
     """Retrieve an account with its contacts."""
     if not is_valid_uuid(account_id):
@@ -279,7 +279,7 @@ async def retrieve_account(
 async def update_account(
     account_id: str,
     body: AccountUpdate,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> AccountResponse:
     """Update an account."""
     if not is_valid_uuid(account_id):
@@ -393,7 +393,7 @@ async def update_account(
 @router.delete("/{account_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_account(
     account_id: str,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> Response:
     """Soft delete an account."""
     if not is_valid_uuid(account_id):
@@ -445,7 +445,7 @@ async def delete_account(
 @router.get("/{account_id}/contacts")
 async def list_account_contacts(
     account_id: str,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> list[dict[str, Any]]:
     """List all contacts for an account."""
     if not is_valid_uuid(account_id):
@@ -498,7 +498,7 @@ async def list_account_contacts(
 @router.get("/{account_id}/engagements")
 async def list_account_engagements(
     account_id: str,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> list[dict[str, Any]]:
     """List all engagements for an account."""
     if not is_valid_uuid(account_id):

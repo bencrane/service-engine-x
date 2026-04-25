@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
-from app.auth import verify_token
+from app.auth import verify_token_or_internal_bearer
 from app.database import get_supabase
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
@@ -17,7 +17,7 @@ class UserListItem(BaseModel):
     org_id: str
 
 
-@router.get("", dependencies=[Depends(verify_token)])
+@router.get("", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def list_users(
     org_id: str | None = Query(None, description="Optional: filter users by org"),
 ) -> list[UserListItem]:

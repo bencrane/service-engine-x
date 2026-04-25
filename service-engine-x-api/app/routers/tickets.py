@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
 
-from app.auth.dependencies import AuthContext, get_current_org
+from app.auth.dependencies import AuthContext, get_current_org_or_internal_bearer
 from app.database import get_supabase
 from app.utils import format_currency, format_currency_optional
 from app.models.tickets import (
@@ -279,7 +279,7 @@ async def assign_tags(supabase: Any, ticket_id: str, tag_names: list[str]) -> No
 @router.get("", response_model=TicketListResponse)
 async def list_tickets(
     request: Request,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
     limit: int = Query(default=20, ge=1, le=100),
     page: int = Query(default=1, ge=1),
     sort: str = Query(default="created_at:desc"),
@@ -371,7 +371,7 @@ async def list_tickets(
 @router.post("", response_model=TicketResponse, status_code=201)
 async def create_ticket(
     body: TicketCreate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> TicketResponse:
     """Create a new ticket."""
     supabase = get_supabase()
@@ -465,7 +465,7 @@ async def create_ticket(
 @router.get("/{ticket_id}", response_model=TicketResponse)
 async def retrieve_ticket(
     ticket_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> TicketResponse:
     """Retrieve a ticket by ID."""
     supabase = get_supabase()
@@ -484,7 +484,7 @@ async def retrieve_ticket(
 async def update_ticket(
     ticket_id: str,
     body: TicketUpdate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> TicketResponse:
     """Update a ticket."""
     supabase = get_supabase()
@@ -593,7 +593,7 @@ async def update_ticket(
 @router.delete("/{ticket_id}", status_code=204)
 async def delete_ticket(
     ticket_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> Response:
     """Soft delete a ticket."""
     supabase = get_supabase()

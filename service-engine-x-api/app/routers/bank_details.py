@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 
-from app.auth import AuthContext, get_current_auth
+from app.auth import AuthContext, get_current_org_or_internal_bearer
 from app.database import get_supabase
 from app.models.bank_details import (
     BankDetailsCreate,
@@ -43,7 +43,7 @@ def serialize_bank_details(row: dict[str, Any]) -> BankDetailsResponse:
 
 @router.get("")
 async def get_bank_details(
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> BankDetailsResponse | None:
     """Get bank details for the authenticated organization."""
     supabase = get_supabase()
@@ -64,7 +64,7 @@ async def get_bank_details(
 @router.put("", status_code=status.HTTP_200_OK)
 async def upsert_bank_details(
     body: BankDetailsCreate,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> BankDetailsResponse:
     """Create or replace bank details for the authenticated organization."""
     supabase = get_supabase()
@@ -120,7 +120,7 @@ async def upsert_bank_details(
 @router.patch("")
 async def update_bank_details(
     body: BankDetailsUpdate,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> BankDetailsResponse:
     """Partially update bank details for the authenticated organization."""
     supabase = get_supabase()
@@ -165,7 +165,7 @@ async def update_bank_details(
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_bank_details(
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> Response:
     """Delete bank details for the authenticated organization."""
     supabase = get_supabase()
