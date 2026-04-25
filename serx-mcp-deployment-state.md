@@ -86,7 +86,7 @@ Fix path:
 
 After build issues were fixed, startup failed repeatedly with:
 
-- `Invalid MCP environment configuration: SERX_MCP_SHARED_SECRET: Required; SERX_INTERNAL_API_BASE_URL: Required; SERX_INTERNAL_API_KEY: Required; SERX_SERVICE_API_TOKEN: Required`
+- `Invalid MCP environment configuration: SERX_MCP_AUTH_TOKEN: Required; SERX_INTERNAL_API_BASE_URL: Required; SERX_INTERNAL_API_KEY: Required; SERX_SERVICE_API_TOKEN: Required`
 
 This comes directly from `src/env.ts` schema validation.
 

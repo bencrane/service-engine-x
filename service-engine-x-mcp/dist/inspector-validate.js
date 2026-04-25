@@ -21,7 +21,7 @@ async function main() {
         env: {
             ...process.env,
             SERX_TRANSPORT: "stdio",
-            SERX_MCP_SHARED_SECRET: "validation-secret",
+            SERX_MCP_AUTH_TOKEN: "validation-secret",
             SERX_INTERNAL_API_BASE_URL: "http://127.0.0.1:3000",
             SERX_INTERNAL_API_KEY: "validation-internal-key",
             SERX_SERVICE_API_TOKEN: "validation-service-token",

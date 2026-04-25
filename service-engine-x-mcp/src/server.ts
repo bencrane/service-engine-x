@@ -86,7 +86,7 @@ function extractBearerToken(headerValue: string | undefined): string | null {
 
 function ensureIngressAuth(req: Request, res: Response): boolean {
   const token = extractBearerToken(req.header("authorization") ?? undefined);
-  if (token === env.SERX_MCP_SHARED_SECRET) {
+  if (token === env.SERX_MCP_AUTH_TOKEN) {
     return true;
   }
 
