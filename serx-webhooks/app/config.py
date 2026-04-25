@@ -14,7 +14,6 @@ class Settings(BaseSettings):
     OPEX_DISPATCH_TIMEOUT_SECONDS: float
     OPEX_DISPATCH_MAX_ATTEMPTS: int
 
-    PORT: int
     DEBUG: bool
     APP_NAME: str
     APP_VERSION: str
