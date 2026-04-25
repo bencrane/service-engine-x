@@ -1,8 +1,12 @@
+Updated: Saturday, April 25, 2026 at 7:14 PM EDT
+
 # SERX Migration Audit
 
 Scope: state-of-the-codebase audit of `service-engine-x` (SERX) to inform porting its live functionality into `outbound-engine-x` (OEX). Research-only; no SERX code modified.
 
 Working tree: `/Users/benjamincrane/service-engine-x/.claude/worktrees/silly-colden-0b396f`
+
+> **Auth state update:** Section 7 below describes the pre-remediation auth state. The SERX auth remediation Phase 1 + Phase 2 work has since landed (see PRs #23 and #24). The current authoritative auth state is captured in [`docs/SERX_AUTH_REMEDIATION_PHASE_1_2.md`](docs/SERX_AUTH_REMEDIATION_PHASE_1_2.md). Section 7 is preserved as historical context for the audit; read it alongside the new doc.
 
 ---
 

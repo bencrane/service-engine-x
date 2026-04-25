@@ -1,6 +1,10 @@
+Updated: Saturday, April 25, 2026 at 7:14 PM EDT
+
 # Multi-Tenant Architecture Guide
 
 This document defines the multi-tenant architecture patterns used in this system. It serves as a canonical reference for building tenant-isolated SaaS applications.
+
+> **Note (Phase 2 of auth remediation):** SERX runtime auth is currently a transitional bearer-token model — `org_id` and `user_id` arrive as caller-supplied query parameters on tenant CRUD routes, not from a JWT or DB-resolved API token. The patterns in Section 3 below describe the *target* multi-tenant model. The *current* SERX state is documented in [`AUTHENTICATION.md`](AUTHENTICATION.md) and the canonical Phase 1+2 record at [`SERX_AUTH_REMEDIATION_PHASE_1_2.md`](../../docs/SERX_AUTH_REMEDIATION_PHASE_1_2.md). Phase 3 cuts CRUD routes over to JWT verification (`get_current_auth_jwt`) at which point the patterns below become the live runtime behavior.
 
 ---
 
