@@ -48,12 +48,19 @@ def internal_app() -> FastAPI:
     return app
 
 
-def test_internal_bearer_missing_secret_returns_503(internal_app: FastAPI) -> None:
-    with patch.object(settings, "SERX_INTERNAL_BEARER_TOKEN", ""):
-        client = TestClient(internal_app)
-        r = client.get("/internal-only", headers={"Authorization": "Bearer anything"})
-        assert r.status_code == 503
-        assert "SERX_INTERNAL_BEARER_TOKEN" in r.json()["detail"]
+def test_settings_require_internal_bearer_token_at_startup(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``SERX_INTERNAL_BEARER_TOKEN`` is required: ``Settings()`` must raise
+    when the env var is unset, so the app fails to boot rather than serving
+    traffic with a missing secret.
+    """
+    from pydantic import ValidationError
+
+    from app.config import Settings
+
+    monkeypatch.delenv("SERX_INTERNAL_BEARER_TOKEN", raising=False)
+    with pytest.raises(ValidationError) as exc_info:
+        Settings()  # type: ignore[call-arg]
+    assert "SERX_INTERNAL_BEARER_TOKEN" in str(exc_info.value)
 
 
 def test_internal_bearer_missing_header_returns_401(internal_app: FastAPI) -> None:

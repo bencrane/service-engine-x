@@ -108,14 +108,12 @@ async def require_internal_bearer(
     Validates ``Authorization: Bearer <token>`` against
     ``settings.SERX_INTERNAL_BEARER_TOKEN`` via constant-time comparison.
     No DB lookup. No JWT verification. No user/org context.
+
+    ``SERX_INTERNAL_BEARER_TOKEN`` is required at startup (see ``app.config``);
+    the app will not boot without it, so this dependency does not need to
+    handle a missing-secret state.
     """
     expected = settings.SERX_INTERNAL_BEARER_TOKEN
-    if not expected:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="server_misconfigured: SERX_INTERNAL_BEARER_TOKEN not set on API",
-        )
-
     token = _extract_bearer_token(authorization)
     if not token:
         raise HTTPException(

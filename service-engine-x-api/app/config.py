@@ -10,11 +10,12 @@ class Settings(BaseSettings):
     # Retained during Phase 1/2 migration; removed in Phase 3 once callers cut over.
     SERX_AUTH_TOKEN: str = ""
 
-    # Static bearer for non-interactive backend callers (serx-mcp, Trigger.dev,
-    # Railway cron). Inherited from the shared-mcps Doppler config. Required
-    # in production; defaults to empty so local dev/test runs still boot, but
-    # ``require_internal_bearer`` returns 503 when unset.
-    SERX_INTERNAL_BEARER_TOKEN: str = ""
+    # Static bearer for non-interactive backend callers (serx-mcp, OPEX
+    # outbound calls). Sourced from Doppler in deployed envs and from the
+    # local ``.env`` for development. Required: ``Settings()`` raises on
+    # instantiation (i.e. at app startup / import of ``app.config``) when
+    # this is unset, so the API will not boot misconfigured.
+    SERX_INTERNAL_BEARER_TOKEN: str
 
     # auth-engine-x JWKS verification (EdDSA, JWKS-based).
     # Naming uses the AUX_ prefix that the directive specifies; defaults match
