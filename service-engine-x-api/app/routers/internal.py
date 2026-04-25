@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from app.auth import verify_token
+from app.auth import verify_token_or_internal_bearer
 from app.config import settings
 from app.database import get_supabase
 
@@ -59,7 +59,7 @@ class ServiceResponse(BaseModel):
     updated_at: str
 
 
-@router.get("/orgs", dependencies=[Depends(verify_token)])
+@router.get("/orgs", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def list_organizations() -> list[OrganizationResponse]:
     """List all organizations."""
     supabase = get_supabase()
@@ -67,7 +67,7 @@ async def list_organizations() -> list[OrganizationResponse]:
     return [OrganizationResponse(**org) for org in result.data]
 
 
-@router.get("/orgs/{org_id}/services", dependencies=[Depends(verify_token)])
+@router.get("/orgs/{org_id}/services", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def list_services_for_org(
     org_id: str,
     limit: int = Query(50, ge=1, le=100),
@@ -85,7 +85,7 @@ async def list_services_for_org(
     return [ServiceResponse(**svc) for svc in result.data]
 
 
-@router.post("/services", status_code=status.HTTP_201_CREATED, dependencies=[Depends(verify_token)])
+@router.post("/services", status_code=status.HTTP_201_CREATED, dependencies=[Depends(verify_token_or_internal_bearer)])
 async def create_service(body: InternalServiceCreate) -> ServiceResponse:
     """Create a service for any organization."""
     supabase = get_supabase()
@@ -161,7 +161,7 @@ def _serialize_proposal(proposal: dict, items: list[dict]) -> ProposalResponse:
     )
 
 
-@router.post("/proposals", status_code=status.HTTP_201_CREATED, dependencies=[Depends(verify_token)])
+@router.post("/proposals", status_code=status.HTTP_201_CREATED, dependencies=[Depends(verify_token_or_internal_bearer)])
 async def create_proposal_internal(body: AdminCreateProposalRequest) -> ProposalResponse:
     """Create a proposal for any organization (internal admin use)."""
     supabase = get_supabase()
@@ -264,7 +264,7 @@ async def create_proposal_internal(body: AdminCreateProposalRequest) -> Proposal
 # ============== Accounts ==============
 
 
-@router.get("/orgs/{org_id}/accounts", dependencies=[Depends(verify_token)])
+@router.get("/orgs/{org_id}/accounts", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def list_accounts_for_org(
     org_id: str,
     limit: int = Query(50, ge=1, le=100),
@@ -286,7 +286,7 @@ async def list_accounts_for_org(
     return result.data or []
 
 
-@router.get("/orgs/{org_id}/accounts/{account_id}", dependencies=[Depends(verify_token)])
+@router.get("/orgs/{org_id}/accounts/{account_id}", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def get_account_for_org(org_id: str, account_id: str) -> dict[str, Any]:
     """Get a specific account."""
     supabase = get_supabase()
@@ -306,7 +306,7 @@ async def get_account_for_org(org_id: str, account_id: str) -> dict[str, Any]:
 # ============== Contacts ==============
 
 
-@router.get("/orgs/{org_id}/contacts", dependencies=[Depends(verify_token)])
+@router.get("/orgs/{org_id}/contacts", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def list_contacts_for_org(
     org_id: str,
     limit: int = Query(50, ge=1, le=100),
@@ -331,7 +331,7 @@ async def list_contacts_for_org(
     return result.data or []
 
 
-@router.get("/orgs/{org_id}/contacts/{contact_id}", dependencies=[Depends(verify_token)])
+@router.get("/orgs/{org_id}/contacts/{contact_id}", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def get_contact_for_org(org_id: str, contact_id: str) -> dict[str, Any]:
     """Get a specific contact."""
     supabase = get_supabase()
@@ -357,7 +357,7 @@ class ContactUpsertRequest(BaseModel):
     account_id: str | None = None
 
 
-@router.post("/orgs/{org_id}/contacts/upsert", dependencies=[Depends(verify_token)])
+@router.post("/orgs/{org_id}/contacts/upsert", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def upsert_contact_for_org(
     org_id: str,
     body: ContactUpsertRequest,
@@ -427,7 +427,7 @@ async def upsert_contact_for_org(
 # ============== Proposals (Read) ==============
 
 
-@router.get("/orgs/{org_id}/proposals", dependencies=[Depends(verify_token)])
+@router.get("/orgs/{org_id}/proposals", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def list_proposals_for_org(
     org_id: str,
     limit: int = Query(50, ge=1, le=100),
@@ -455,7 +455,7 @@ async def list_proposals_for_org(
     return proposals
 
 
-@router.get("/orgs/{org_id}/proposals/{proposal_id}", dependencies=[Depends(verify_token)])
+@router.get("/orgs/{org_id}/proposals/{proposal_id}", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def get_proposal_for_org(org_id: str, proposal_id: str) -> dict[str, Any]:
     """Get a specific proposal with items."""
     supabase = get_supabase()
@@ -475,7 +475,7 @@ async def get_proposal_for_org(org_id: str, proposal_id: str) -> dict[str, Any]:
     return _serialize_proposal(proposal, items).model_dump()
 
 
-@router.get("/orgs/{org_id}/proposals/{proposal_id}/deliverables", dependencies=[Depends(verify_token)])
+@router.get("/orgs/{org_id}/proposals/{proposal_id}/deliverables", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def get_proposal_deliverables_for_org(org_id: str, proposal_id: str) -> dict[str, Any]:
     """
     Get deliverables (projects with service details) for a signed proposal.
@@ -588,7 +588,7 @@ async def get_proposal_deliverables_for_org(org_id: str, proposal_id: str) -> di
 # ============== Engagements ==============
 
 
-@router.get("/orgs/{org_id}/engagements", dependencies=[Depends(verify_token)])
+@router.get("/orgs/{org_id}/engagements", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def list_engagements_for_org(
     org_id: str,
     limit: int = Query(50, ge=1, le=100),
@@ -613,7 +613,7 @@ async def list_engagements_for_org(
     return result.data or []
 
 
-@router.get("/orgs/{org_id}/engagements/{engagement_id}", dependencies=[Depends(verify_token)])
+@router.get("/orgs/{org_id}/engagements/{engagement_id}", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def get_engagement_for_org(org_id: str, engagement_id: str) -> dict[str, Any]:
     """Get a specific engagement with projects."""
     supabase = get_supabase()
@@ -633,7 +633,7 @@ async def get_engagement_for_org(org_id: str, engagement_id: str) -> dict[str, A
 # ============== Projects ==============
 
 
-@router.get("/orgs/{org_id}/projects", dependencies=[Depends(verify_token)])
+@router.get("/orgs/{org_id}/projects", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def list_projects_for_org(
     org_id: str,
     limit: int = Query(50, ge=1, le=100),
@@ -658,7 +658,7 @@ async def list_projects_for_org(
     return result.data or []
 
 
-@router.get("/orgs/{org_id}/projects/{project_id}", dependencies=[Depends(verify_token)])
+@router.get("/orgs/{org_id}/projects/{project_id}", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def get_project_for_org(org_id: str, project_id: str) -> dict[str, Any]:
     """Get a specific project."""
     supabase = get_supabase()
@@ -678,7 +678,7 @@ async def get_project_for_org(org_id: str, project_id: str) -> dict[str, Any]:
 # ============== Orders ==============
 
 
-@router.get("/orgs/{org_id}/orders", dependencies=[Depends(verify_token)])
+@router.get("/orgs/{org_id}/orders", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def list_orders_for_org(
     org_id: str,
     limit: int = Query(50, ge=1, le=100),
@@ -703,7 +703,7 @@ async def list_orders_for_org(
     return result.data or []
 
 
-@router.get("/orgs/{org_id}/orders/{order_id}", dependencies=[Depends(verify_token)])
+@router.get("/orgs/{org_id}/orders/{order_id}", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def get_order_for_org(org_id: str, order_id: str) -> dict[str, Any]:
     """Get a specific order."""
     supabase = get_supabase()

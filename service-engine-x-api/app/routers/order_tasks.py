@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse, Response
 
-from app.auth import AuthContext, get_current_org
+from app.auth import AuthContext, get_current_org_or_internal_bearer
 from app.database import get_supabase
 from app.models.order_tasks import OrderTaskResponse, OrderTaskUpdate, TaskEmployeeResponse
 from app.utils import is_valid_uuid
@@ -96,7 +96,7 @@ async def get_task_with_order(supabase, task_id: str, org_id: str) -> dict[str, 
 async def update_order_task(
     task_id: str,
     body: OrderTaskUpdate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> OrderTaskResponse:
     """Update an order task."""
     if not is_valid_uuid(task_id):
@@ -190,7 +190,7 @@ async def update_order_task(
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_order_task(
     task_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> Response:
     """Delete an order task."""
     if not is_valid_uuid(task_id):
@@ -215,7 +215,7 @@ async def delete_order_task(
 @router.post("/{task_id}/complete", status_code=status.HTTP_200_OK)
 async def mark_task_complete(
     task_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> OrderTaskResponse:
     """Mark a task as complete."""
     if not is_valid_uuid(task_id):
@@ -252,7 +252,7 @@ async def mark_task_complete(
 @router.delete("/{task_id}/complete", status_code=status.HTTP_200_OK)
 async def mark_task_incomplete(
     task_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> OrderTaskResponse:
     """Mark a task as incomplete."""
     if not is_valid_uuid(task_id):

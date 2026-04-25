@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 
-from app.auth import AuthContext, get_current_org
+from app.auth import AuthContext, get_current_org_or_internal_bearer
 from app.database import get_supabase
 from app.utils import is_valid_uuid
 
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/order-messages", tags=["Order Messages"])
 @router.delete("/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_order_message(
     message_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> Response:
     """Delete an order message."""
     if not is_valid_uuid(message_id):

@@ -11,7 +11,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.auth import verify_token
+from app.auth import verify_token_or_internal_bearer
 from app.database import get_supabase
 
 router = APIRouter(
@@ -20,7 +20,7 @@ router = APIRouter(
 )
 
 
-@router.get("/{event_id}", dependencies=[Depends(verify_token)])
+@router.get("/{event_id}", dependencies=[Depends(verify_token_or_internal_bearer)])
 async def get_webhook_event(event_id: UUID) -> dict[str, Any]:
     """Return a single webhook_events_raw row by id."""
     result = (

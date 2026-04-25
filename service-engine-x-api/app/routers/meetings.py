@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from app.auth import AuthContext, get_current_auth
+from app.auth import AuthContext, get_current_org_or_internal_bearer
 from app.config import settings
 from app.database import get_supabase
 from app.models.meetings import (
@@ -152,7 +152,7 @@ def _apply_filters(
 @router.get("")
 async def list_meetings(
     request: Request,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
     limit: int = Query(20, ge=1, le=100),
     page: int = Query(1, ge=1),
     sort: str = Query("start_time:desc"),
@@ -249,7 +249,7 @@ async def list_meetings(
 
 @router.get("/upcoming")
 async def list_upcoming_meetings(
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
     within_hours: int | None = Query(
         None, ge=1, le=24 * 365, description="Upcoming meetings within N hours"
     ),
@@ -332,7 +332,7 @@ async def list_upcoming_meetings(
 @router.get("/{meeting_id}")
 async def get_meeting(
     meeting_id: str,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> MeetingResponse:
     """Fetch a single meeting by id, scoped to the caller's organization."""
     if not is_valid_uuid(meeting_id):

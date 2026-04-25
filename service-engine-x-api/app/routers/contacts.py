@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 
-from app.auth import AuthContext, get_current_auth
+from app.auth import AuthContext, get_current_org_or_internal_bearer
 from app.config import settings
 from app.database import get_supabase
 from app.models.contacts import (
@@ -98,7 +98,7 @@ def serialize_contact_list(contact: dict[str, Any]) -> ContactListResponse:
 @router.get("")
 async def list_contacts(
     request: Request,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
     limit: int = Query(20, ge=1, le=100),
     page: int = Query(1, ge=1),
     sort: str = Query("created_at:desc"),
@@ -177,7 +177,7 @@ async def list_contacts(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_contact(
     body: ContactCreate,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> ContactResponse:
     """Create a new contact."""
     supabase = get_supabase()
@@ -267,7 +267,7 @@ async def create_contact(
 @router.get("/{contact_id}")
 async def retrieve_contact(
     contact_id: str,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> ContactResponse:
     """Retrieve a contact by ID."""
     if not is_valid_uuid(contact_id):
@@ -314,7 +314,7 @@ async def retrieve_contact(
 async def update_contact(
     contact_id: str,
     body: ContactUpdate,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> ContactResponse:
     """Update a contact."""
     if not is_valid_uuid(contact_id):
@@ -463,7 +463,7 @@ async def update_contact(
 @router.delete("/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_contact(
     contact_id: str,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> Response:
     """Soft delete a contact."""
     if not is_valid_uuid(contact_id):
@@ -507,7 +507,7 @@ def generate_temp_password() -> str:
 async def grant_portal_access(
     contact_id: str,
     body: GrantPortalAccessRequest,
-    auth: AuthContext = Depends(get_current_auth),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> dict[str, Any]:
     """
     Grant portal access to a contact.

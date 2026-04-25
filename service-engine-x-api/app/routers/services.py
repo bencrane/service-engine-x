@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 
-from app.auth import AuthContext, get_current_org
+from app.auth import AuthContext, get_current_org_or_internal_bearer
 from app.config import settings
 from app.database import get_supabase
 from app.models.services import (
@@ -109,7 +109,7 @@ async def validate_employees(supabase, employee_ids: list[str]) -> str | None:
 @router.get("")
 async def list_services(
     request: Request,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
     limit: int = Query(20, ge=1, le=100),
     page: int = Query(1, ge=1),
     sort: str = Query("created_at:desc"),
@@ -195,7 +195,7 @@ async def list_services(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_service(
     body: ServiceCreate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> ServiceResponse:
     """Create a new service."""
     supabase = get_supabase()
@@ -303,7 +303,7 @@ async def create_service(
 @router.get("/{service_id}")
 async def retrieve_service(
     service_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> ServiceResponse:
     """Retrieve a single service by ID."""
     if not is_valid_uuid(service_id):
@@ -330,7 +330,7 @@ async def retrieve_service(
 async def update_service(
     service_id: str,
     body: ServiceUpdate,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> ServiceResponse:
     """Update an existing service."""
     if not is_valid_uuid(service_id):
@@ -481,7 +481,7 @@ async def update_service(
 @router.delete("/{service_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_service(
     service_id: str,
-    auth: AuthContext = Depends(get_current_org),
+    auth: AuthContext = Depends(get_current_org_or_internal_bearer),
 ) -> Response:
     """Soft delete a service."""
     if not is_valid_uuid(service_id):
