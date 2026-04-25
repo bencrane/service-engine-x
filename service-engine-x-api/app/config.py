@@ -6,8 +6,22 @@ class Settings(BaseSettings):
     SERVICE_ENGINE_X_SUPABASE_URL: str
     SERVICE_ENGINE_X_SUPABASE_SERVICE_ROLE_KEY: str
 
-    # Auth — single shared bearer token; org_id/user_id come per-request from caller
+    # Auth — single shared bearer token; org_id/user_id come per-request from caller.
+    # Retained during Phase 1/2 migration; removed in Phase 3 once callers cut over.
     SERX_AUTH_TOKEN: str = ""
+
+    # Static bearer for non-interactive backend callers (serx-mcp, Trigger.dev,
+    # Railway cron). Inherited from the shared-mcps Doppler config. Required
+    # in production; defaults to empty so local dev/test runs still boot, but
+    # ``require_internal_bearer`` returns 503 when unset.
+    SERX_INTERNAL_BEARER_TOKEN: str = ""
+
+    # auth-engine-x JWKS verification (EdDSA, JWKS-based).
+    # Naming uses the AUX_ prefix that the directive specifies; defaults match
+    # the auth-engine-x production endpoints used by sibling engines (OEX).
+    AUX_JWKS_URL: str = "https://api.authengine.dev/api/auth/jwks"
+    AUX_ISSUER: str = "https://api.authengine.dev"
+    AUX_AUDIENCE: str = "https://api.authengine.dev"
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
