@@ -16,9 +16,19 @@ from typing import Any
 
 import pytest
 
-os.environ.setdefault("SUPABASE_URL", "https://fake.supabase.co")
-os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "fake-service-role-key")
+os.environ.setdefault("SERX_SUPABASE_URL", "https://fake.supabase.co")
+os.environ.setdefault("SERX_SUPABASE_SERVICE_ROLE_KEY", "fake-service-role-key")
 os.environ.setdefault("CAL_WEBHOOK_SECRET", "")
+os.environ.setdefault("OPEX_API_BASE_URL", "https://fake.opex.local")
+os.environ.setdefault("OPEX_AUTH_TOKEN", "")
+os.environ.setdefault("OPEX_DISPATCH_ENABLED", "true")
+os.environ.setdefault("OPEX_DISPATCH_TIMEOUT_SECONDS", "10.0")
+os.environ.setdefault("OPEX_DISPATCH_MAX_ATTEMPTS", "3")
+os.environ.setdefault("PORT", "8000")
+os.environ.setdefault("DEBUG", "false")
+os.environ.setdefault("APP_NAME", "serx-webhooks")
+os.environ.setdefault("APP_VERSION", "0.1.0")
+os.environ.setdefault("CORS_ORIGINS", '["*"]')
 
 from fastapi.testclient import TestClient  # noqa: E402
 

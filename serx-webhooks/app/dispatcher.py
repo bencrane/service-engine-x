@@ -97,7 +97,7 @@ def _dispatch_event_inner(row_id: str, source: str, trigger_event: str | None) -
         "event_name": event_name,
         "event_ref": {"store": _EVENT_STORE, "id": row_id},
     }
-    url = f"{settings.OPEX_API_URL.rstrip('/')}{_DISPATCH_PATH}"
+    url = f"{settings.OPEX_API_BASE_URL.rstrip('/')}{_DISPATCH_PATH}"
     headers = {
         "Authorization": f"Bearer {settings.OPEX_AUTH_TOKEN}",
         "Content-Type": "application/json",
