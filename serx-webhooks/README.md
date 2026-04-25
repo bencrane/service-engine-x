@@ -140,7 +140,7 @@ service-engine-x/                          ← monorepo
     │   └── 001_webhook_events_raw.sql     ← already run in Supabase
     ├── app/
     │   ├── main.py                        ← FastAPI init + CORS + router wiring
-    │   ├── config.py                      ← pydantic-settings; reads SUPABASE_*, CAL_WEBHOOK_SECRET
+    │   ├── config.py                      ← pydantic-settings; all keys required from Doppler
     │   ├── database.py                    ← @lru_cache supabase client factory
     │   └── routers/
     │       ├── health.py                  ← /health/live, /health/ready
@@ -174,22 +174,29 @@ Everything else comes from the Doppler config bound to that token. The
 Dockerfile CMD is `doppler run -- uvicorn ...` — uvicorn only sees env from
 Doppler's injection.
 
-**Required Doppler secrets:**
+Doppler is the sole source of env. Every field in `app/config.py` is required — there are no in-code defaults or shell fallbacks. A missing key fails app boot loudly.
 
-| Key                          | Required? | Notes                                                                   |
-|------------------------------|-----------|-------------------------------------------------------------------------|
-| `SUPABASE_URL`               | Yes       | Shared Supabase project URL                                             |
-| `SUPABASE_SERVICE_ROLE_KEY`  | Yes       | Service role key (not anon) — needed for insert and to bypass RLS       |
-| `CAL_WEBHOOK_SECRET`         | No (yet)  | Set when Cal.com is pointed at this endpoint. Empty = `signature_valid=null` on all rows. |
+**Required Doppler keys:**
 
-**Do NOT set in Doppler:**
+| Key                              | Notes                                                                                           |
+|----------------------------------|-------------------------------------------------------------------------------------------------|
+| `SERX_SUPABASE_URL`              | Shared Supabase project URL                                                                     |
+| `SERX_SUPABASE_SERVICE_ROLE_KEY` | Service role key (not anon) — needed for insert and to bypass RLS                               |
+| `CAL_WEBHOOK_SECRET`             | Cal.com HMAC. Empty string = skip verification, store `signature_valid=null` (phase-1 behavior).|
+| `OPEX_API_BASE_URL`              | managed-agents-x-api base URL                                                                   |
+| `OPEX_AUTH_TOKEN`                | Bearer token for dispatch. Empty string = dispatch disabled, rows marked `dispatch_disabled`.   |
+| `OPEX_DISPATCH_ENABLED`          | `true`/`false`                                                                                  |
+| `OPEX_DISPATCH_TIMEOUT_SECONDS`  | float                                                                                           |
+| `OPEX_DISPATCH_MAX_ATTEMPTS`     | int                                                                                             |
+| `PORT`                           | int — must match what Railway expects (see PORT note below)                                     |
+| `DEBUG`                          | `true`/`false`                                                                                  |
+| `APP_NAME`                       | service identity                                                                                |
+| `APP_VERSION`                    | semver                                                                                          |
+| `CORS_ORIGINS`                   | JSON array, e.g. `["*"]`                                                                        |
 
-- `PORT` — Railway injects it at the platform level; the Dockerfile reads `${PORT:-8000}` at shell time before `doppler run` executes.
-- `DEBUG`, `APP_NAME`, `APP_VERSION`, `CORS_ORIGINS` — defaults in `app/config.py` are fine for phase 1. Only set if overriding.
+### `PORT` note
 
-### Exception: the `PORT` gotcha
-
-The Dockerfile CMD is `sh -c "doppler run -- uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"`. `${PORT:-8000}` is expanded by the shell **before** `doppler run` starts, so it picks up Railway's platform-injected `PORT`, not a Doppler value. This is correct and desired — don't "fix" it.
+The Dockerfile CMD is `sh -c "doppler run -- uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"`. `${PORT}` is expanded by the shell **before** `doppler run` starts, so it picks up Railway's platform-injected `PORT`. Doppler also has a `PORT` key (required by `app/config.py` so the app can read it for any non-uvicorn use), but uvicorn binds to Railway's value at the shell layer.
 
 ---
 
@@ -252,7 +259,7 @@ pytest                                    # 7 tests; uses fake Supabase, no env 
 ruff check app/ tests/                    # lint
 ```
 
-Do NOT run uvicorn locally with bare shell env vars (`SUPABASE_URL=... uvicorn ...`).
+Do NOT run uvicorn locally with bare shell env vars (`SERX_SUPABASE_URL=... uvicorn ...`).
 If you need to exercise the full stack locally, use `doppler run -- uvicorn app.main:app`
 once you've authenticated with `doppler login` against the right project/config.
 
