@@ -1,28 +1,19 @@
-from pydantic_settings import BaseSettings
+"""Pydantic settings (env vars).
+
+Auth foundation (AUX_*) is inherited from ``aux_m2m_server.BaseAuthSettings``.
+Do not redeclare ``AUX_JWKS_URL`` / ``AUX_ISSUER`` / ``AUX_AUDIENCE`` /
+``AUX_API_BASE_URL`` / ``AUX_M2M_API_KEY`` here — they're owned upstream so
+every AUX backend uses identical field names and the same boot-required
+contract.
+"""
+
+from aux_m2m_server import BaseAuthSettings
 
 
-class Settings(BaseSettings):
+class Settings(BaseAuthSettings):
     # Supabase
     SERVICE_ENGINE_X_SUPABASE_URL: str
     SERVICE_ENGINE_X_SUPABASE_SERVICE_ROLE_KEY: str
-
-    # Auth — single shared bearer token; org_id/user_id come per-request from caller.
-    # Retained during Phase 1/2 migration; removed in Phase 3 once callers cut over.
-    SERX_AUTH_TOKEN: str = ""
-
-    # Static bearer for non-interactive backend callers (serx-mcp, OPEX
-    # outbound calls). Sourced from Doppler in deployed envs and from the
-    # local ``.env`` for development. Required: ``Settings()`` raises on
-    # instantiation (i.e. at app startup / import of ``app.config``) when
-    # this is unset, so the API will not boot misconfigured.
-    SERX_INTERNAL_BEARER_TOKEN: str
-
-    # auth-engine-x JWKS verification (EdDSA, JWKS-based).
-    # Naming uses the AUX_ prefix that the directive specifies; defaults match
-    # the auth-engine-x production endpoints used by sibling engines (OEX).
-    AUX_JWKS_URL: str = "https://api.authengine.dev/api/auth/jwks"
-    AUX_ISSUER: str = "https://api.authengine.dev"
-    AUX_AUDIENCE: str = "https://api.authengine.dev"
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
@@ -33,9 +24,10 @@ class Settings(BaseSettings):
     APP_NAME: str = "Service Engine X API"
     APP_VERSION: str = "1.0.0"
 
-    # Managed agents dispatch (used by scheduler endpoint)
+    # Managed agents dispatch (used by scheduler endpoint).
+    # Outbound auth to OPEX is handled by ``aux_m2m_client.AsyncM2MAuth`` —
+    # there is no longer a static ``OPEX_AUTH_TOKEN`` in this config.
     OPEX_API_URL: str = ""
-    OPEX_AUTH_TOKEN: str = ""
 
     # Scheduler windows — all overridable via env
     SCHEDULER_PREFRAME_WINDOW_START_HOURS: int = 4

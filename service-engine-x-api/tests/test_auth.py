@@ -1,176 +1,183 @@
-"""Focused tests for the Phase 1 auth additions.
+"""Tests for SERX auth dependencies after the AUX M2M cutover.
 
-Covers:
-- ``require_internal_bearer`` static-bearer dependency.
-- ``get_current_auth_jwt`` JWT dependency: missing/invalid/expired tokens.
+Verification is delegated to ``aux_m2m_server`` — these tests patch
+``app.auth.dependencies._verify`` so they don't need a live JWKS endpoint.
 
-JWKS verification itself is covered by patching ``decode_access_token`` and
-``decode_m2m_token`` so tests do not depend on a live JWKS endpoint.
+Two deps are exercised:
+
+* ``verify_token`` — no-org dep used by ``/api/internal/**``,
+  ``/api/orgs``, ``/api/users``.
+* ``get_current_org`` (alias ``get_current_auth``) — tenant-CRUD dep that
+  also reads ``org_id`` / ``user_id`` from query params.
+
+Both accept a session JWT or a system-actor M2M JWT; both reject anything
+else with 401. Org-scoped M2M is rejected because SERX has no org-scoped
+machine callers today.
 """
 
+from __future__ import annotations
+
+import asyncio
 from unittest.mock import patch
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from fastapi import HTTPException
 
 from app.auth.dependencies import (
     AuthContext,
-    InternalCallerContext,
-    get_current_auth_jwt,
-    require_internal_bearer,
+    INTERNAL_CALLER_USER_ID,
+    get_current_org,
+    verify_token,
 )
-from app.config import settings
 
 
-@pytest.fixture
-def internal_app() -> FastAPI:
-    """Tiny app exposing the two new deps for direct HTTP testing."""
-    app = FastAPI()
-
-    @app.get("/internal-only")
-    def internal_only(
-        ctx: InternalCallerContext = __import__("fastapi").Depends(require_internal_bearer),
-    ) -> dict:
-        return {"caller": ctx.caller}
-
-    @app.get("/jwt-only")
-    def jwt_only(
-        auth: AuthContext = __import__("fastapi").Depends(get_current_auth_jwt),
-    ) -> dict:
-        return {
-            "org_id": auth.org_id,
-            "user_id": auth.user_id,
-            "auth_method": auth.auth_method,
-            "role": auth.role,
-        }
-
-    return app
+def _run(coro):
+    return asyncio.new_event_loop().run_until_complete(coro)
 
 
-def test_settings_require_internal_bearer_token_at_startup(monkeypatch: pytest.MonkeyPatch) -> None:
-    """``SERX_INTERNAL_BEARER_TOKEN`` is required: ``Settings()`` must raise
-    when the env var is unset, so the app fails to boot rather than serving
-    traffic with a missing secret.
-    """
-    from pydantic import ValidationError
-
-    from app.config import Settings
-
-    monkeypatch.delenv("SERX_INTERNAL_BEARER_TOKEN", raising=False)
-    with pytest.raises(ValidationError) as exc_info:
-        Settings()  # type: ignore[call-arg]
-    assert "SERX_INTERNAL_BEARER_TOKEN" in str(exc_info.value)
+def _session_claims(*, sub: str = "user-1", org_id: str = "org-1") -> dict:
+    return {"type": "session", "sub": sub, "org_id": org_id, "role": "admin"}
 
 
-def test_internal_bearer_missing_header_returns_401(internal_app: FastAPI) -> None:
-    with patch.object(settings, "SERX_INTERNAL_BEARER_TOKEN", "secret-value"):
-        client = TestClient(internal_app)
-        r = client.get("/internal-only")
-        assert r.status_code == 401
+def _system_m2m_claims() -> dict:
+    return {"type": "m2m", "actor_type": "system_service", "sub": "service:serx-mcp"}
 
 
-def test_internal_bearer_wrong_token_returns_401(internal_app: FastAPI) -> None:
-    with patch.object(settings, "SERX_INTERNAL_BEARER_TOKEN", "secret-value"):
-        client = TestClient(internal_app)
-        r = client.get("/internal-only", headers={"Authorization": "Bearer wrong"})
-        assert r.status_code == 401
-        assert r.json()["detail"] == "invalid_internal_bearer"
+def _org_m2m_claims() -> dict:
+    return {"type": "m2m", "actor_type": "org_service", "sub": "service:partner",
+            "org_id": "org-1"}
 
 
-def test_internal_bearer_correct_token_returns_200(internal_app: FastAPI) -> None:
-    with patch.object(settings, "SERX_INTERNAL_BEARER_TOKEN", "secret-value"):
-        client = TestClient(internal_app)
-        r = client.get("/internal-only", headers={"Authorization": "Bearer secret-value"})
-        assert r.status_code == 200
-        assert r.json() == {"caller": "internal"}
+# ── verify_token (no-org dep) ───────────────────────────────────────────
 
 
-def test_jwt_dep_missing_header_returns_401(internal_app: FastAPI) -> None:
-    client = TestClient(internal_app)
-    r = client.get("/jwt-only", params={"org_id": "o", "user_id": "u"})
-    assert r.status_code == 401
+def test_verify_token_session_jwt_passes() -> None:
+    with patch("app.auth.dependencies._verify", return_value=_session_claims()):
+        result = _run(verify_token(authorization="Bearer abc"))
+    assert result is None
 
 
-def test_jwt_dep_invalid_token_returns_401(internal_app: FastAPI) -> None:
-    with (
-        patch("app.auth.dependencies.decode_access_token", return_value=None),
-        patch("app.auth.dependencies.decode_m2m_token", return_value=None),
+def test_verify_token_system_m2m_passes() -> None:
+    with patch("app.auth.dependencies._verify", return_value=_system_m2m_claims()):
+        result = _run(verify_token(authorization="Bearer abc"))
+    assert result is None
+
+
+def test_verify_token_org_scoped_m2m_rejected() -> None:
+    with patch("app.auth.dependencies._verify", return_value=_org_m2m_claims()):
+        with pytest.raises(HTTPException) as exc:
+            _run(verify_token(authorization="Bearer abc"))
+    assert exc.value.status_code == 401
+
+
+def test_verify_token_invalid_token_returns_401() -> None:
+    with patch("app.auth.dependencies._verify", return_value=None):
+        with pytest.raises(HTTPException) as exc:
+            _run(verify_token(authorization="Bearer wrong"))
+    assert exc.value.status_code == 401
+
+
+def test_verify_token_missing_header_returns_401() -> None:
+    with pytest.raises(HTTPException) as exc:
+        _run(verify_token(authorization=None))
+    assert exc.value.status_code == 401
+
+
+def test_verify_token_malformed_header_returns_401() -> None:
+    with pytest.raises(HTTPException) as exc:
+        _run(verify_token(authorization="Token abc"))
+    assert exc.value.status_code == 401
+
+
+# ── get_current_org (tenant-CRUD dep) ───────────────────────────────────
+
+
+def test_get_current_org_session_happy_path() -> None:
+    with patch(
+        "app.auth.dependencies._verify",
+        return_value=_session_claims(sub="user-1", org_id="org-1"),
     ):
-        client = TestClient(internal_app)
-        r = client.get(
-            "/jwt-only",
-            headers={"Authorization": "Bearer broken"},
-            params={"org_id": "o", "user_id": "u"},
-        )
-        assert r.status_code == 401
-        assert r.json()["detail"] == "invalid_or_expired_token"
+        ctx = _run(get_current_org(
+            authorization="Bearer abc", org_id="org-1", user_id="user-1",
+        ))
+    assert isinstance(ctx, AuthContext)
+    assert ctx.org_id == "org-1"
+    assert ctx.user_id == "user-1"
+    assert ctx.auth_method == "session"
+    assert ctx.role == "admin"
 
 
-def test_jwt_dep_session_token_happy_path(internal_app: FastAPI) -> None:
-    payload = {"sub": "user-1", "org_id": "org-1", "role": "admin", "type": "session"}
-    with (
-        patch("app.auth.dependencies.decode_access_token", return_value=payload),
-        patch("app.auth.dependencies.decode_m2m_token", return_value=None),
+def test_get_current_org_session_org_id_mismatch_returns_403() -> None:
+    with patch(
+        "app.auth.dependencies._verify",
+        return_value=_session_claims(org_id="org-A"),
     ):
-        client = TestClient(internal_app)
-        r = client.get(
-            "/jwt-only",
-            headers={"Authorization": "Bearer session-jwt"},
-            params={"org_id": "org-1", "user_id": "user-1"},
-        )
-        assert r.status_code == 200
-        body = r.json()
-        assert body["org_id"] == "org-1"
-        assert body["user_id"] == "user-1"
-        assert body["auth_method"] == "session"
-        assert body["role"] == "admin"
+        with pytest.raises(HTTPException) as exc:
+            _run(get_current_org(
+                authorization="Bearer abc", org_id="org-B", user_id="user-1",
+            ))
+    assert exc.value.status_code == 403
+    assert exc.value.detail == "org_id_mismatch_with_token"
 
 
-def test_jwt_dep_session_user_id_mismatch_returns_403(internal_app: FastAPI) -> None:
-    payload = {"sub": "user-1", "org_id": "org-1", "type": "session"}
-    with (
-        patch("app.auth.dependencies.decode_access_token", return_value=payload),
-        patch("app.auth.dependencies.decode_m2m_token", return_value=None),
+def test_get_current_org_session_user_id_mismatch_returns_403() -> None:
+    with patch(
+        "app.auth.dependencies._verify",
+        return_value=_session_claims(sub="user-1"),
     ):
-        client = TestClient(internal_app)
-        r = client.get(
-            "/jwt-only",
-            headers={"Authorization": "Bearer session-jwt"},
-            params={"org_id": "org-1", "user_id": "someone-else"},
-        )
-        assert r.status_code == 403
-        assert r.json()["detail"] == "user_id_mismatch_with_token"
+        with pytest.raises(HTTPException) as exc:
+            _run(get_current_org(
+                authorization="Bearer abc", org_id="org-1", user_id="someone-else",
+            ))
+    assert exc.value.status_code == 403
+    assert exc.value.detail == "user_id_mismatch_with_token"
 
 
-def test_jwt_dep_m2m_token_org_mismatch_returns_403(internal_app: FastAPI) -> None:
-    payload = {"sub": "service:scheduler", "org_id": "org-A", "type": "m2m"}
-    with (
-        patch("app.auth.dependencies.decode_access_token", return_value=None),
-        patch("app.auth.dependencies.decode_m2m_token", return_value=payload),
-    ):
-        client = TestClient(internal_app)
-        r = client.get(
-            "/jwt-only",
-            headers={"Authorization": "Bearer m2m-jwt"},
-            params={"org_id": "org-B", "user_id": "ignored"},
-        )
-        assert r.status_code == 403
-        assert r.json()["detail"] == "org_id_mismatch_with_token"
+def test_get_current_org_system_m2m_trusts_query_params() -> None:
+    """System-actor M2M is org-agnostic — the caller-supplied org_id /
+    user_id are accepted as request scope without cross-checking the token."""
+    with patch("app.auth.dependencies._verify", return_value=_system_m2m_claims()):
+        ctx = _run(get_current_org(
+            authorization="Bearer abc",
+            org_id="any-org",
+            user_id="any-user",
+        ))
+    assert ctx.org_id == "any-org"
+    assert ctx.user_id == "any-user"
+    assert ctx.auth_method == "system_m2m"
+    assert ctx.role == "org_admin"
 
 
-def test_jwt_dep_m2m_token_happy_path(internal_app: FastAPI) -> None:
-    payload = {"sub": "service:scheduler", "org_id": "org-1", "type": "m2m"}
-    with (
-        patch("app.auth.dependencies.decode_access_token", return_value=None),
-        patch("app.auth.dependencies.decode_m2m_token", return_value=payload),
-    ):
-        client = TestClient(internal_app)
-        r = client.get(
-            "/jwt-only",
-            headers={"Authorization": "Bearer m2m-jwt"},
-            params={"org_id": "org-1", "user_id": "any"},
-        )
-        assert r.status_code == 200
-        body = r.json()
-        assert body["auth_method"] == "m2m"
+def test_get_current_org_org_scoped_m2m_rejected() -> None:
+    with patch("app.auth.dependencies._verify", return_value=_org_m2m_claims()):
+        with pytest.raises(HTTPException) as exc:
+            _run(get_current_org(
+                authorization="Bearer abc", org_id="org-1", user_id="user-1",
+            ))
+    assert exc.value.status_code == 401
+
+
+def test_get_current_org_invalid_token_returns_401() -> None:
+    with patch("app.auth.dependencies._verify", return_value=None):
+        with pytest.raises(HTTPException) as exc:
+            _run(get_current_org(
+                authorization="Bearer wrong", org_id="org-1", user_id="user-1",
+            ))
+    assert exc.value.status_code == 401
+
+
+def test_get_current_org_missing_header_returns_401() -> None:
+    with pytest.raises(HTTPException) as exc:
+        _run(get_current_org(
+            authorization=None, org_id="org-1", user_id="user-1",
+        ))
+    assert exc.value.status_code == 401
+
+
+# ── INTERNAL_CALLER_USER_ID is exported (smoke) ─────────────────────────
+
+
+def test_internal_caller_user_id_constant_is_a_uuid_string() -> None:
+    """Sentinel UUID kept stable across the cutover so any historical
+    consumers comparing against it keep working."""
+    assert INTERNAL_CALLER_USER_ID == "00000000-0000-0000-0000-000000000000"

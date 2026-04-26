@@ -2,6 +2,7 @@
 
 import traceback
 
+from aux_m2m_server import JWKSVerifier, set_verifier
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +10,11 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 
 from app.config import settings
+
+# Wire the shared AUX JWKS verifier. Must run before any FastAPI dep that
+# calls ``get_verifier()``; module import time is fine.
+set_verifier(JWKSVerifier(settings.to_auth_settings()))
+
 from app.routers import (
     accounts_router,
     bank_details_router,

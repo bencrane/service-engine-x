@@ -1,33 +1,63 @@
-"""Authentication dependencies for FastAPI."""
+"""Authentication dependencies for FastAPI.
 
-import hmac
-import secrets
+Verification is delegated to ``aux_m2m_server`` (single canonical JWKS
+verifier shared across every AUX backend). All authenticated routes accept
+either:
+
+* a session JWT issued by auth-engine-x (HQ-frontend operator), or
+* a system-actor M2M JWT (``type=m2m`` / ``actor_type=system_service``)
+  minted by a sibling backend or MCP via ``aux_m2m_client.AsyncM2MAuth``.
+
+Org-scoped M2M tokens are not used to call SERX today — every machine caller
+is a system actor (serx-mcp, OPEX scheduler, etc.). Per-tenant request scope
+is supplied by the caller as ``org_id`` / ``user_id`` query params on tenant
+CRUD routes; the bearer is fully trusted there.
+
+The legacy ``SERX_AUTH_TOKEN`` and ``SERX_INTERNAL_BEARER_TOKEN`` static
+bearers were removed in this cutover.
+
+Symbol shape:
+
+* ``AuthContext`` — caller identity for every authenticated route.
+* ``verify_token`` — no-org dep used by ``/api/internal/**``, ``/api/orgs``,
+  ``/api/users``. Returns ``None``; routes that just need to gate access
+  without consuming caller identity use it as ``Depends(verify_token)``.
+* ``get_current_auth`` / ``get_current_org`` — tenant-CRUD dep that also
+  reads ``org_id`` and ``user_id`` from query params. Both names are kept
+  as aliases of the same function so existing routers don't have to be
+  rewritten.
+"""
+
 from dataclasses import dataclass
+from typing import Any
 
+from aux_m2m_server import get_verifier, is_m2m, is_session
+from aux_m2m_server.errors import TokenVerificationError
 from fastapi import Header, HTTPException, Query, status
 
-from app.auth.jwt import decode_access_token, decode_m2m_token
-from app.config import settings
+
+# ── identity contexts ───────────────────────────────────────────────────
+
+
+INTERNAL_CALLER_USER_ID = "00000000-0000-0000-0000-000000000000"
 
 
 @dataclass
 class AuthContext:
-    """Authentication context containing org and user info."""
+    """Authentication context returned by SERX auth deps.
 
-    org_id: str
-    user_id: str
-    role: str = ""
-    auth_method: str = "shared_token"
-
-
-@dataclass
-class InternalCallerContext:
-    """Identity context for non-interactive backend callers authenticated via
-    the static internal bearer (serx-mcp, Trigger.dev cron). No user, no org —
-    this caller is the platform itself.
+    ``org_id`` and ``user_id`` are populated for tenant-CRUD routes (read
+    from query params on ``get_current_org``). ``role`` is the role claim
+    on session tokens, ``"org_admin"`` for synthesized system-M2M callers.
     """
 
-    caller: str = "internal"
+    org_id: str | None
+    user_id: str | None
+    role: str = ""
+    auth_method: str = "session"  # session | system_m2m
+
+
+# ── helpers ─────────────────────────────────────────────────────────────
 
 
 def _extract_bearer_token(authorization: str | None) -> str | None:
@@ -40,49 +70,59 @@ def _extract_bearer_token(authorization: str | None) -> str | None:
     return parts[1]
 
 
-def _check_token(authorization: str | None) -> None:
+def _verify(token: str) -> dict[str, Any] | None:
+    """Verify a JWT via the shared JWKS verifier. Returns claims or ``None``."""
+    try:
+        return get_verifier().verify(token)
+    except TokenVerificationError:
+        return None
+
+
+def _verify_session_or_system_m2m(authorization: str | None) -> dict[str, Any]:
+    """Return verified claims for a session OR ``system_service`` M2M JWT.
+
+    Raises ``HTTPException(401)`` for any other state — missing header,
+    malformed header, invalid token, expired token, or org-scoped M2M
+    (which SERX does not accept).
     """
-    Validate the legacy shared bearer token. Returns distinct 401 details so
-    the caller can tell missing-header from malformed-header from mismatch.
-    """
-    if not settings.SERX_AUTH_TOKEN:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="server_misconfigured: SERX_AUTH_TOKEN not set on API",
-        )
-
-    if authorization is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="missing_authorization_header",
-        )
-
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="malformed_authorization_header: expected 'Bearer <token>'",
-        )
-
-    token = authorization[7:]
-
+    token = _extract_bearer_token(authorization)
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="empty_bearer_token",
+            detail="missing_or_malformed_authorization_header",
         )
-
-    if not secrets.compare_digest(token, settings.SERX_AUTH_TOKEN):
+    claims = _verify(token)
+    if claims is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="token_mismatch: Bearer value does not match SERX_AUTH_TOKEN",
+            detail="invalid_or_expired_token",
         )
+    if is_session(claims):
+        return claims
+    if is_m2m(claims) and str(claims.get("actor_type", "")) == "system_service":
+        return claims
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="session_or_system_m2m_token_required",
+    )
+
+
+# ── deps ────────────────────────────────────────────────────────────────
 
 
 async def verify_token(
     authorization: str | None = Header(None, alias="Authorization"),
 ) -> None:
-    """Validate the shared API token. Token-only, no org/user scoping."""
-    _check_token(authorization)
+    """No-org auth dep for routes that don't take request-scope query params.
+
+    Used by ``/api/internal/**``, ``/api/orgs``, ``/api/users`` —
+    backend-callable surfaces where org/user is either irrelevant (admin
+    listing) or supplied separately via path/body.
+
+    Accepts a session JWT (HQ frontend) or a ``system_service`` M2M JWT
+    (serx-mcp / OPEX scheduler). Any other token shape is 401.
+    """
+    _verify_session_or_system_m2m(authorization)
 
 
 async def get_current_org(
@@ -90,114 +130,45 @@ async def get_current_org(
     org_id: str = Query(..., description="Target organization UUID"),
     user_id: str = Query(..., description="Acting user UUID"),
 ) -> AuthContext:
+    """Tenant-CRUD auth dep.
+
+    Verifies a session or system-M2M JWT and reads caller-supplied
+    ``org_id`` / ``user_id`` query params. When the token carries an
+    ``org_id`` claim it must match the query; session tokens must agree on
+    ``user_id`` (``sub``). System-M2M tokens are org-agnostic — the query
+    params are accepted as caller-supplied scope.
     """
-    Validate the shared API token and return caller-supplied org/user context.
-
-    Token proves the caller is trusted; org_id and user_id say which slice
-    of data to operate on. Caller is responsible for those IDs being valid.
-    """
-    _check_token(authorization)
-    return AuthContext(org_id=org_id, user_id=user_id)
-
-
-async def require_internal_bearer(
-    authorization: str | None = Header(None, alias="Authorization"),
-) -> InternalCallerContext:
-    """Static-bearer auth for non-interactive backend callers.
-
-    Validates ``Authorization: Bearer <token>`` against
-    ``settings.SERX_INTERNAL_BEARER_TOKEN`` via constant-time comparison.
-    No DB lookup. No JWT verification. No user/org context.
-
-    ``SERX_INTERNAL_BEARER_TOKEN`` is required at startup (see ``app.config``);
-    the app will not boot without it, so this dependency does not need to
-    handle a missing-secret state.
-    """
-    expected = settings.SERX_INTERNAL_BEARER_TOKEN
-    token = _extract_bearer_token(authorization)
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="missing_or_malformed_authorization_header",
+    claims = _verify_session_or_system_m2m(authorization)
+    if is_session(claims):
+        claim_org = claims.get("org_id")
+        if claim_org and claim_org != org_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="org_id_mismatch_with_token",
+            )
+        sub = claims.get("sub")
+        if sub and sub != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="user_id_mismatch_with_token",
+            )
+        return AuthContext(
+            org_id=org_id,
+            user_id=user_id,
+            role=str(claims.get("role", "")),
+            auth_method="session",
         )
 
-    if not hmac.compare_digest(token, expected):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="invalid_internal_bearer",
-        )
-
-    return InternalCallerContext()
-
-
-async def get_current_auth_jwt(
-    authorization: str | None = Header(None, alias="Authorization"),
-    org_id: str = Query(..., description="Target organization UUID"),
-    user_id: str = Query(..., description="Acting user UUID"),
-) -> AuthContext:
-    """JWT-verified auth for authenticated CRUD routes.
-
-    Validates a bearer JWT issued by auth-engine-x (EdDSA, JWKS-verified) and
-    returns an :class:`AuthContext` shaped like :func:`get_current_org` so
-    routers can keep reading ``auth.org_id`` / ``auth.user_id`` / ``auth.role``
-    during the migration.
-
-    Wiring is deferred to Phase 2/3; this dependency is exported but not yet
-    attached to routes. Existing query-layer ``org_id`` filters keep working.
-
-    Both session JWTs (``type=session``) and M2M JWTs (``type=m2m``) are
-    accepted. ``org_id`` and ``user_id`` are still passed as query params for
-    Phase 1 backward compatibility — when the token carries an ``org_id``
-    claim it must agree with the query, and session tokens must agree on
-    ``user_id``.
-    """
-    token = _extract_bearer_token(authorization)
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="missing_or_malformed_authorization_header",
-        )
-
-    payload = decode_access_token(token)
-    auth_method = "session"
-    if payload is None:
-        payload = decode_m2m_token(token)
-        auth_method = "m2m"
-
-    if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="invalid_or_expired_token",
-        )
-
-    sub = payload.get("sub")
-    if not sub:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="missing_sub_claim",
-        )
-
-    claim_org_id = payload.get("org_id")
-    if claim_org_id and claim_org_id != org_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="org_id_mismatch_with_token",
-        )
-
-    if auth_method == "session" and sub != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="user_id_mismatch_with_token",
-        )
-
+    # system_service M2M
     return AuthContext(
         org_id=org_id,
         user_id=user_id,
-        role=payload.get("role", ""),
-        auth_method=auth_method,
+        role="org_admin",
+        auth_method="system_m2m",
     )
 
 
-# Legacy alias retained so existing routers keep their current behavior during
-# Phase 1. Routes are migrated to ``get_current_auth_jwt`` in Phase 2/3.
+# Routers historically import ``get_current_auth``; keep it as an alias of
+# ``get_current_org`` so we don't have to touch every router file just to
+# rename the symbol.
 get_current_auth = get_current_org

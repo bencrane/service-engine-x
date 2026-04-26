@@ -18,12 +18,25 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
 import httpx
+from aux_m2m_client import AsyncM2MAuth, AsyncM2MTokenClient
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.auth import verify_token
 from app.config import settings
 from app.database import get_supabase
+
+# Outbound M2M auth to OPEX. Lazily constructed so import-time failures in
+# token-client setup surface as request-time 5xx rather than startup crashes
+# during local dev / tests.
+_opex_token_client: AsyncM2MTokenClient | None = None
+
+
+def _get_opex_auth() -> AsyncM2MAuth:
+    global _opex_token_client
+    if _opex_token_client is None:
+        _opex_token_client = AsyncM2MTokenClient(settings.to_m2m_config())
+    return AsyncM2MAuth(_opex_token_client)
 
 router = APIRouter(prefix="/api/internal/scheduler", tags=["Internal Scheduler"])
 
@@ -164,10 +177,7 @@ async def _dispatch_to_managed_agents(
 ) -> tuple[int, dict[str, Any] | None]:
     response = await client.post(
         f"{settings.OPEX_API_URL.rstrip('/')}/events/receive",
-        headers={
-            "Authorization": f"Bearer {settings.OPEX_AUTH_TOKEN}",
-            "Content-Type": "application/json",
-        },
+        headers={"Content-Type": "application/json"},
         json={
             "source": "serx_scheduler",
             "event_name": cfg.event_name,
@@ -187,7 +197,7 @@ async def _dispatch_to_managed_agents(
 
 
 async def _run_event_dispatch(cfg: EventConfig) -> DispatchSummary:
-    if not settings.OPEX_API_URL or not settings.OPEX_AUTH_TOKEN:
+    if not settings.OPEX_API_URL:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="managed-agents dispatch is not configured",
@@ -223,7 +233,7 @@ async def _run_event_dispatch(cfg: EventConfig) -> DispatchSummary:
     failed = 0
 
     if inserted_ids:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(auth=_get_opex_auth()) as client:
             for event_id, meeting_id in inserted_ids:
                 try:
                     code, body = await _dispatch_to_managed_agents(client, cfg, event_id)
