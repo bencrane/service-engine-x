@@ -8,7 +8,6 @@ from app.routers.clients import router as clients_router
 from app.routers.contacts import router as contacts_router
 from app.routers.conversations import router as conversations_router
 from app.routers.engagements import router as engagements_router
-from app.routers.health import router as health_router
 from app.routers.internal import router as internal_router
 from app.routers.internal_cal_events import router as internal_cal_events_router
 from app.routers.internal_meetings_deals import router as internal_meetings_deals_router
@@ -29,7 +28,6 @@ from app.routers.tickets import router as tickets_router
 from app.routers.users import router as users_router
 
 __all__ = [
-    "health_router",
     "clients_router",
     "services_router",
     "orders_router",

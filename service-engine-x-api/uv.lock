@@ -35,8 +35,8 @@ wheels = [
 
 [[package]]
 name = "aux-m2m"
-version = "0.1.0"
-source = { git = "https://github.com/bencrane/aux-m2m-client-py?rev=v0.1.0#8ec4fd03ca7698a799ae9ad88df4aa1399b0affa" }
+version = "0.2.0"
+source = { git = "https://github.com/bencrane/aux-m2m-client-py?rev=v0.2.0#c854fe97e724bfe4e11933ae53c02ee6d0b5fb52" }
 dependencies = [
     { name = "httpx" },
 ]
@@ -1237,7 +1237,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aux-m2m", extras = ["server"], git = "https://github.com/bencrane/aux-m2m-client-py?rev=v0.1.0" },
+    { name = "aux-m2m", extras = ["server"], git = "https://github.com/bencrane/aux-m2m-client-py?rev=v0.2.0" },
     { name = "docraptor", specifier = ">=2.0.0" },
     { name = "email-validator", specifier = ">=2.0.0" },
     { name = "fastapi", specifier = ">=0.115,<1" },

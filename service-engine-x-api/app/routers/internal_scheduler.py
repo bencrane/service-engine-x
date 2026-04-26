@@ -28,15 +28,21 @@ from app.database import get_supabase
 
 # Outbound M2M auth to OPEX. Lazily constructed so import-time failures in
 # token-client setup surface as request-time 5xx rather than startup crashes
-# during local dev / tests.
+# during local dev / tests. The same token client is also reused by the
+# library-provided depth-health router (see app/main.py) so token caching is
+# shared across health probes and scheduler dispatch.
 _opex_token_client: AsyncM2MTokenClient | None = None
 
 
-def _get_opex_auth() -> AsyncM2MAuth:
+def get_opex_token_client() -> AsyncM2MTokenClient:
     global _opex_token_client
     if _opex_token_client is None:
         _opex_token_client = AsyncM2MTokenClient(settings.to_m2m_config())
-    return AsyncM2MAuth(_opex_token_client)
+    return _opex_token_client
+
+
+def _get_opex_auth() -> AsyncM2MAuth:
+    return AsyncM2MAuth(get_opex_token_client())
 
 router = APIRouter(prefix="/api/internal/scheduler", tags=["Internal Scheduler"])
 

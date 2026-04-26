@@ -2,7 +2,7 @@
 
 import traceback
 
-from aux_m2m_server import JWKSVerifier, set_verifier
+from aux_m2m_server import JWKSVerifier, build_health_router, set_verifier
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,7 +24,6 @@ from app.routers import (
     contacts_router,
     conversations_router,
     engagements_router,
-    health_router,
     internal_cal_events_router,
     internal_meetings_deals_router,
     internal_router,
@@ -44,6 +43,7 @@ from app.routers import (
     users_router,
     webhooks_router,
 )
+from app.routers.internal_scheduler import get_opex_token_client
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -125,7 +125,24 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 
 # Include routers
-app.include_router(health_router)
+# Library-provided depth-health router. Exposes:
+#   GET /api/health       — liveness (always 200)
+#   GET /api/health/deep  — depth check: JWKS reachability, local M2M
+#                            mintability, peer reachability.
+# The token client is shared with internal_scheduler so that token caching
+# applies across both dispatch and the m2m_mint health check.
+app.include_router(
+    build_health_router(
+        service_name="serx",
+        version=settings.APP_VERSION,
+        token_client=get_opex_token_client(),
+        peers=(
+            {"opex": f"{settings.OPEX_API_URL.rstrip('/')}/api/health"}
+            if settings.OPEX_API_URL
+            else {}
+        ),
+    )
+)
 app.include_router(clients_router)
 app.include_router(services_router)
 app.include_router(orders_router)

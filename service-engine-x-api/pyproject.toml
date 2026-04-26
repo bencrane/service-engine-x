@@ -15,7 +15,7 @@ dependencies = [
     "resend>=0.7.0",
     "email-validator>=2.0.0",
     "docraptor>=2.0.0",
-    "aux-m2m[server] @ git+https://github.com/bencrane/aux-m2m-client-py@v0.1.0",
+    "aux-m2m[server] @ git+https://github.com/bencrane/aux-m2m-client-py@v0.2.0",
 ]
 
 [project.optional-dependencies]
